@@ -21,7 +21,7 @@ namespace Characters.Player.States
         protected override void UpdateStateLogic()
         {
             // 如果检测到手里突然有了“导演（武器）”，立刻切入持有状态
-            if (player.EquipmentDriver.CurrentItemDirector != null)
+            if (data.CurrentItem != null)
             {
                 player.UpperBodyCtrl.StateMachine.ChangeState(
                     player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyHoldItemState>()

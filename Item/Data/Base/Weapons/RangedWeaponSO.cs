@@ -1,4 +1,6 @@
 using Items.Data;
+using Characters.Player.Animation;
+using Animancer;
 using UnityEngine;
 
 namespace Items.Data.Weapons
@@ -7,6 +9,10 @@ namespace Items.Data.Weapons
     public class RangedWeaponSO : EquippableItemSO
     {
         [Header("--- 枪械独有配置 (Ranged Stats) ---")]
+        [Tooltip("瞄准动画")]
+        public ClipTransition AimAnim;
+        public AnimPlayOptions AnimPlayOptions=AnimPlayOptions.UpperBodyDefault;
+
         [Tooltip("最大弹药量")]
         public int MaxAmmo = 30;
 

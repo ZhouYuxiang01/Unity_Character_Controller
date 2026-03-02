@@ -46,5 +46,13 @@ namespace Characters.Player.Animation
             ForcePhaseSync = false
         };
 
+        public static AnimPlayOptions UpperBodyDefault => new AnimPlayOptions
+        {
+            Layer = 1,
+            FadeDuration = -1f,
+            Speed = -1f,
+            NormalizedTime = -1f,
+            ForcePhaseSync = false
+        };
     }
 }

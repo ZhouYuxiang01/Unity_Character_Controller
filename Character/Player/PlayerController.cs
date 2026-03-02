@@ -10,6 +10,7 @@ using Core.StateMachine;
 using Items.Data;
 using System.Collections.Generic;
 using UnityEngine;
+using Items.Core;
 
 namespace Characters.Player
 {
@@ -44,7 +45,7 @@ namespace Characters.Player
 
         [Header("--- 调试选项 (Debug Options) ---")]
         [Tooltip("如果配置了此项，游戏开始时会自动装备这个物品")]
-        public ItemDefinitionSO DefaultEquipment;
+        public EquippableItemSO DefaultEquipment;
         public bool statedebug = false;
 
 
@@ -136,7 +137,7 @@ namespace Characters.Player
             SetupAnimationLayers();
 
             // 初始化物品栏控制器（绑定数字键等输入）
-            InventoryController?.Initialize();
+            InventoryController.Initialize();
 
             // 3. 初始化初始装备
             InitializeEquipments();
@@ -164,19 +165,17 @@ namespace Characters.Player
 
         private void SetupAnimationLayers()
         {
-            // TODO: 未来如果你在 Config 里配置了 UpperBodyMask (AvatarMask)
-            // 可以在这里调用 AnimFacade.SetLayerMask(1, Config.UpperBodyMask);
+            AnimFacade.SetLayerMask(1, Config.Core.UpperBodyMask);
+            AnimFacade.SetLayerMask(2, Config.Core.FacialMask);
 
-            // 预留：设置第 1 层（上半身）的初始权重为 1
-            AnimFacade.SetLayerWeight(1, 1f);
         }
 
         private void InitializeEquipments()
         {
             if (DefaultEquipment != null)
             {
-                // 通过 InventoryController 绑定到快捷栏 0 (对应按键 1)
-                InventoryController?.AssignItemToSlot(0, DefaultEquipment);
+                var instance = new ItemInstance(DefaultEquipment, 1);
+                InventoryController.AssignItemToSlot(1, instance);
             }
         }
 
@@ -188,12 +187,8 @@ namespace Characters.Player
                 StateMachine.Initialize(StateRegistry.InitialState);
             }
 
-            // 2. 再启动上半身 (调用 UpperBodyController 中我们新写的 Start 方法)
-            // 如果你没有在 UpperBodyController 写 Start()，可以直接这样调用：
-            if (UpperBodyCtrl.StateRegistry.InitialState != null)
-            {
-                UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
-            }
+            // 2. 再启动上半身 
+             if (UpperBodyCtrl.StateRegistry.InitialState != null)UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
         }
 
 

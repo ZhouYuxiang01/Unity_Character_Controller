@@ -20,9 +20,15 @@ namespace Items.Data
         [Header("--- 通用表现动画 (Universal Animations) ---")]
         [Tooltip("拔出/装备时的动画")]
         public ClipTransition EquipAnim;
+        public AnimPlayOptions EquipAnimPlayOptions = AnimPlayOptions.UpperBodyDefault;
 
-        [Tooltip("持有时默认的待机动画 (可选)")]
+        [Tooltip("收起时的动画")]
+        public ClipTransition UnEquipAnim;
+        public AnimPlayOptions UnEquipAnimPlayOptions = AnimPlayOptions.UpperBodyDefault;
+
+        [Tooltip("持有时默认的待机动画")]
         public ClipTransition EquipIdleAnim;
+        public AnimPlayOptions EquipIdleAnimOptions= AnimPlayOptions.UpperBodyDefault;
 
         /// <summary>
         /// 提供一个快捷方法，用于生成默认的上半身播放选项。

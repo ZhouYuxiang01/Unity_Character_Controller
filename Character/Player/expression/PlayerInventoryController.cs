@@ -12,8 +12,8 @@ namespace Characters.Player.Expression
         private PlayerController _player;
 
         public InventorySystem MainInventory { get; private set; }
+        public InventorySystem HotbarInventory { get; private set; }
 
-        private readonly ItemInstance[] _hotbarSlots = new ItemInstance[5];
         private int _currentSlotIndex = -1;
 
         // 缓存委托，确保可正确解绑（PlayerInputReader 使用 UnityAction）
@@ -27,6 +27,7 @@ namespace Characters.Player.Expression
         {
             _player = player;
             MainInventory = new InventorySystem(20);
+            HotbarInventory = new InventorySystem(5);
         }
 
         public void Initialize()
@@ -70,21 +71,51 @@ namespace Characters.Player.Expression
             _player = null;
         }
 
-        public void AssignItemToSlot(int slotIndex, ItemDefinitionSO itemDef)
+        public void AssignItemToSlot(int slotIndex, ItemInstance itemInstance)
         {
             if (slotIndex < 0 || slotIndex >= 5) return;
-            if (itemDef == null) return;
+            if (itemInstance == null) return;
 
-            // 确保背包里有（调试逻辑：没有则生成一份）
-            if (!MainInventory.Has(itemDef))
+            // 如果该槽位有物品，则放回背包，或替换。 这里仅简单替换，原物品会被替换掉
+            var oldItem = HotbarInventory.SetAt(slotIndex, itemInstance);
+            if (oldItem != null)
             {
-                MainInventory.TryAdd(itemDef, 1);
+                MainInventory.TryAdd(oldItem);
             }
 
-            var instanceInBag = MainInventory.FindFirst(itemDef);
-            _hotbarSlots[slotIndex] = instanceInBag;
+            Debug.Log($"[Inventory] 快捷栏[{slotIndex + 1}] 绑定: {itemInstance.BaseData.DisplayName}");
+        }
 
-            Debug.Log($"[Inventory] 快捷栏[{slotIndex + 1}] 绑定: {itemDef.DisplayName}");
+        public bool MoveToHotbar(InventorySystem source, int sourceSlot, int hotbarSlot)
+        {
+            if (source == null || sourceSlot < 0 || hotbarSlot < 0 || hotbarSlot >= 5) return false;
+
+            var itemToMove = source.RemoveAt(sourceSlot);
+            if (itemToMove == null) return false;
+
+            var oldItem = HotbarInventory.SetAt(hotbarSlot, itemToMove);
+            if (oldItem != null)
+            {
+                source.SetAt(sourceSlot, oldItem);
+            }
+
+            return true;
+        }
+
+        public bool MoveToInventory(InventorySystem source, int sourceSlot, int inventorySlot)
+        {
+            if (source == null || sourceSlot < 0 || inventorySlot < 0 || inventorySlot >= 20) return false;
+
+            var itemToMove = source.RemoveAt(sourceSlot);
+            if (itemToMove == null) return false;
+
+            var oldItem = MainInventory.SetAt(inventorySlot, itemToMove);
+            if (oldItem != null)
+            {
+                source.SetAt(sourceSlot, oldItem);
+            }
+
+            return true;
         }
 
         private void TryEquipSlot(int slotIndex)
@@ -99,7 +130,7 @@ namespace Characters.Player.Expression
                 return;
             }
 
-            var targetInstance = _hotbarSlots[slotIndex];
+            var targetInstance = HotbarInventory.GetAt(slotIndex);
             if (targetInstance == null)
             {
                 Debug.Log($"[Inventory] 槽位 {slotIndex + 1} 为空 -> 卸载");
@@ -137,9 +168,10 @@ namespace Characters.Player.Expression
                 return;
             }
 
-            for (int i = 0; i < _hotbarSlots.Length; i++)
+            for (int i = 0; i < 5; i++)
             {
-                if (_hotbarSlots[i] != null && _hotbarSlots[i].InstanceID == current.InstanceID)
+                var hotbarSlot = HotbarInventory.GetAt(i);
+                if (hotbarSlot != null && hotbarSlot.InstanceID == current.InstanceID)
                 {
                     _currentSlotIndex = i;
                     return;

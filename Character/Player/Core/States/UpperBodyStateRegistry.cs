@@ -1,7 +1,7 @@
+using Characters.Player.Data;
+using Characters.Player.States;
 using System;
 using System.Collections.Generic;
-using Characters.Player.States;
-using Characters.Player.Data;
 using UnityEngine;
 
 namespace Characters.Player.Core
