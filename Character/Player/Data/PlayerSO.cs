@@ -37,5 +37,9 @@ namespace Characters.Player.Data
 
         [Tooltip("翻滚系统 (可选, 为 null 则禁用)")]
         public RollSO Rolling;
+
+        [Header("--- Expression (Optional) ---")]
+        [Tooltip("表情模块（基础表情 + 4个特殊表情）。为 null 则使用 Core 模块中的 Blink/Hurt 等默认表情")]
+        public EmjModuleSO Emj;
     }
 }

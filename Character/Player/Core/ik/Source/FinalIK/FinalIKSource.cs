@@ -18,7 +18,7 @@ namespace Characters.Player.Core.IK.Source
                     {
                         _fbbik.solver.leftHandEffector.target = targetTransform;
                         _fbbik.solver.leftHandEffector.positionWeight = weight;
-                        //_fbbik.solver.leftHandEffector.rotationWeight = weight;
+                        _fbbik.solver.leftHandEffector.rotationWeight = weight;
                     }
                     break;
 
@@ -27,7 +27,7 @@ namespace Characters.Player.Core.IK.Source
                     {
                         _fbbik.solver.rightHandEffector.target = targetTransform;
                         _fbbik.solver.rightHandEffector.positionWeight = weight;
-                        //_fbbik.solver.rightHandEffector.rotationWeight = weight;
+                        _fbbik.solver.rightHandEffector.rotationWeight = weight;
                     }
                     break;
 

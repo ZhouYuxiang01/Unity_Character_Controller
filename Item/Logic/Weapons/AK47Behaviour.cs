@@ -87,8 +87,8 @@ namespace Items.Logic.Weapons
                 Debug.Log($"<color=#00FF00>[AK46]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
             }
 
-            // 处理拔枪硬直 (读取配置时间或采用默认值)
-            float equipAnimDuration = 1.2f;
+            // 处理拔枪硬直
+            float equipAnimDuration = _akconfig.EquipEndTime;
             _equipEndTime = Time.time + equipAnimDuration;
 
             // 播放拔枪动画（若存在）

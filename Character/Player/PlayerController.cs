@@ -108,7 +108,7 @@ namespace Characters.Player
             // 4. 实例化子分层控制器
             InventoryController = new PlayerInventoryController(this);
             UpperBodyCtrl = new UpperBodyController(this); // 里面只做 new Registry，不启动
-            _facialController = new FacialController(Animancer, Config);
+            _facialController = new FacialController(Animancer, Config, RuntimeData);
             _ikController = new IKController(this);
 
             // 5. 装载状态字典 (反射或枚举映射，分配独立内存实例)
@@ -220,6 +220,9 @@ namespace Characters.Player
 
             // 7. 更新上半身分层控制器（装备、瞄准、攻击等）
             UpperBodyCtrl.Update();
+
+            // 7.5 更新表情（读取黑板意图并播放瞬时表情）
+            _facialController?.Update();
 
             // 8. 更新 IK 结算
             _ikController.Update();

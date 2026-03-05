@@ -30,6 +30,7 @@ namespace Characters.Player.States
                 {
                     player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerLandState>());
                 }
+                else player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerFallState>());
             });
 
             PerformJumpPhysics();

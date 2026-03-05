@@ -12,7 +12,7 @@ namespace Characters.Player.Expression
 
         private Vector3 _currentLookAtPosition;
         private Vector3 _lookAtPositionVelocity;
-        private float _lookAtPositionSmoothTime = 0.1f;
+        private float _lookAtPositionSmoothTime;
 
         private IPlayerIKSource _ikSource => _player.IKSource;
         private Transform _lastAimReference = null;
@@ -32,6 +32,7 @@ namespace Characters.Player.Expression
             _player = player;
             _data = player.RuntimeData;
             _config = player.Config;
+            _lookAtPositionSmoothTime = _config.Aiming.AimIkChaseSmoothTime;
         }
 
         public void Update()
@@ -71,7 +72,7 @@ namespace Characters.Player.Expression
             float targetLeftW = _data.WantsLeftHandIK ? 1f : 0f;
             _leftHandWeight = Mathf.SmoothDamp(_leftHandWeight, targetLeftW, ref _leftHandVelocity, 0.15f);
 
-            if (_leftHandWeight > 0.01f && _data.LeftHandGoal != null)
+            if (_leftHandWeight > 0.01f && _data.LeftHandGoal != null && _data.WantsLeftHandIK)
                 _ikSource.SetIKTarget(IKTarget.LeftHand, _data.LeftHandGoal, _leftHandWeight);
             else
             {
@@ -97,12 +98,12 @@ namespace Characters.Player.Expression
             // 4. 头部注视 / 武器瞄准 (LookAt / Aim) 统一处理
             // =================================================================================
             float targetLookW = _data.WantsLookAtIK ? 1f : 0f;
+            // 将淡出速度从0.2f提升到0.08f，加快AimIK权重淡出
             _lookAtWeight = Mathf.SmoothDamp(_lookAtWeight, targetLookW, ref _lookAtVelocity, 0.2f);
 
             if (_lookAtWeight > 0.01f)
             {
-                // 根据黑板意图  决定实际的目标点是谁
-                Vector3 desiredTarget = _data.IsAiming ? _data.TargetAimPoint : _data.LookAtPosition;
+                Vector3 desiredTarget = _data.TargetAimPoint;
 
                 _currentLookAtPosition = Vector3.SmoothDamp(
                     _currentLookAtPosition,

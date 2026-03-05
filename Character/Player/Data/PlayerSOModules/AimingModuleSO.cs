@@ -16,6 +16,7 @@ namespace Characters.Player.Data
         [Header("Animation Blending")]
         public float AimXAnimBlendSmoothTime = 0.2f;
         public float AimYAnimBlendSmoothTime = 0.2f;
+        public float AimIkChaseSmoothTime = 0.1f;
 
         [Header("Animation Assets")]
         public MixerTransition2D AimLocomotionMixer;

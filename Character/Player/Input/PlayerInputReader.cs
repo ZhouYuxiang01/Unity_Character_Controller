@@ -29,6 +29,12 @@ namespace Characters.Player.Input
 
         public bool FirePressed;
         public bool FireHeld;
+
+        // Expression
+        public bool Expression1Pressed;
+        public bool Expression2Pressed;
+        public bool Expression3Pressed;
+        public bool Expression4Pressed;
     }
 
     public class PlayerInputReader : MonoBehaviour
@@ -70,6 +76,12 @@ namespace Characters.Player.Input
         public UnityAction OnNumber3Pressed;
         public UnityAction OnNumber4Pressed;
         public UnityAction OnNumber5Pressed;
+
+        // Expression events
+        public UnityAction OnExpression1Pressed;
+        public UnityAction OnExpression2Pressed;
+        public UnityAction OnExpression3Pressed;
+        public UnityAction OnExpression4Pressed;
         #endregion
 
         #region 4. Action 引用 (由 Inspector 赋值)
@@ -90,6 +102,12 @@ namespace Characters.Player.Input
         public InputActionReference number4Action;
         public InputActionReference number5Action;
         public InputActionReference fireAction;
+
+        [Header("Expression Input References")]
+        public InputActionReference expression1Action;
+        public InputActionReference expression2Action;
+        public InputActionReference expression3Action;
+        public InputActionReference expression4Action;
         #endregion
 
         #region 5. 内部状态
@@ -111,6 +129,11 @@ namespace Characters.Player.Input
 
             // 触发旧版事件回调 (如果这一帧刚刚按下)
             if (_currentFrame.JumpPressed) OnJumpPressed?.Invoke();
+
+            if (_currentFrame.Expression1Pressed) OnExpression1Pressed?.Invoke();
+            if (_currentFrame.Expression2Pressed) OnExpression2Pressed?.Invoke();
+            if (_currentFrame.Expression3Pressed) OnExpression3Pressed?.Invoke();
+            if (_currentFrame.Expression4Pressed) OnExpression4Pressed?.Invoke();
         }
 
         private PlayerInputFrame GatherInputFrame()
@@ -146,11 +169,21 @@ namespace Characters.Player.Input
             frame.FireHeld = fireAction.action.IsPressed();
 
             // --- D. 手动边沿检测 (Pressed) ---
-            // 这种方式算出来的 Pressed 状态是可以被 Consume 方法改写的 bool
             frame.JumpPressed = frame.JumpHeld && !_lastFrame.JumpHeld;
             frame.DodgePressed = frame.DodgeHeld && !_lastFrame.DodgeHeld;
             frame.RollPressed = frame.RollHeld && !_lastFrame.RollHeld;
             frame.FirePressed = frame.FireHeld && !_lastFrame.FireHeld;
+
+            // Expression edge detection (Pressed)
+            bool ex1Held = expression1Action != null && expression1Action.action.IsPressed();
+            bool ex2Held = expression2Action != null && expression2Action.action.IsPressed();
+            bool ex3Held = expression3Action != null && expression3Action.action.IsPressed();
+            bool ex4Held = expression4Action != null && expression4Action.action.IsPressed();
+
+            frame.Expression1Pressed = ex1Held && !_lastFrame.Expression1Pressed;
+            frame.Expression2Pressed = ex2Held && !_lastFrame.Expression2Pressed;
+            frame.Expression3Pressed = ex3Held && !_lastFrame.Expression3Pressed;
+            frame.Expression4Pressed = ex4Held && !_lastFrame.Expression4Pressed;
 
             return frame;
         }
@@ -159,6 +192,10 @@ namespace Characters.Player.Input
         public void ConsumeJump() => _currentFrame.JumpPressed = false;
         public void ConsumeDodge() => _currentFrame.DodgePressed = false;
         public void ConsumeRoll() => _currentFrame.RollPressed = false;
+        public void ConsumeExpression1() => _currentFrame.Expression1Pressed = false;
+        public void ConsumeExpression2() => _currentFrame.Expression2Pressed = false;
+        public void ConsumeExpression3() => _currentFrame.Expression3Pressed = false;
+        public void ConsumeExpression4() => _currentFrame.Expression4Pressed = false;
         #endregion
 
         #region 事件绑定 (保持旧版兼容)
@@ -167,7 +204,8 @@ namespace Characters.Player.Input
             InputActionReference[] all = {
                 moveAction, lookAction, jumpAction, sprintAction, walkAction,
                 aimAction, dodgeAction, rollAction, waveAction, LeftMouseAction,
-                number1Action, number2Action, number3Action, number4Action, number5Action, fireAction
+                number1Action, number2Action, number3Action, number4Action, number5Action, fireAction,
+                expression1Action, expression2Action, expression3Action, expression4Action
             };
 
             foreach (var ar in all)
@@ -176,7 +214,6 @@ namespace Characters.Player.Input
                 if (enable)
                 {
                     ar.action.Enable();
-                    // 为需要立即触发的动作绑定事件
                     if (ar == waveAction) ar.action.performed += _ => OnWavePressed?.Invoke();
                     if (ar == aimAction) { ar.action.started += _ => OnAimStarted?.Invoke(); ar.action.canceled += _ => OnAimCanceled?.Invoke(); }
                     if (ar == LeftMouseAction) { ar.action.started += _ => OnLeftMouseDown?.Invoke(); ar.action.canceled += _ => OnLeftMouseUp?.Invoke(); }
@@ -185,6 +222,11 @@ namespace Characters.Player.Input
                     if (ar == number3Action) ar.action.performed += _ => OnNumber3Pressed?.Invoke();
                     if (ar == number4Action) ar.action.performed += _ => OnNumber4Pressed?.Invoke();
                     if (ar == number5Action) ar.action.performed += _ => OnNumber5Pressed?.Invoke();
+
+                    if (ar == expression1Action) ar.action.performed += _ => OnExpression1Pressed?.Invoke();
+                    if (ar == expression2Action) ar.action.performed += _ => OnExpression2Pressed?.Invoke();
+                    if (ar == expression3Action) ar.action.performed += _ => OnExpression3Pressed?.Invoke();
+                    if (ar == expression4Action) ar.action.performed += _ => OnExpression4Pressed?.Invoke();
                 }
                 else
                 {

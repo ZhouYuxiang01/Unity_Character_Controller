@@ -123,6 +123,13 @@ namespace Characters.Player.Data
         [Space]
         [Header("Fall Intent")]
         public bool WantsToFall;
+
+        [Space]
+        [Header("Expression Intent (单帧表情意图)")]
+        public bool WantsExpression1;
+        public bool WantsExpression2;
+        public bool WantsExpression3;
+        public bool WantsExpression4;
         #endregion
 
         #region WARPING & VAULTING - 空间扭曲与翻越逻辑
@@ -209,6 +216,12 @@ namespace Characters.Player.Data
             WantsToRoll = false;
             WantsLowVault = false;
             WantsHighVault = false;
+
+            // Expression intents (one-frame)
+            WantsExpression1 = false;
+            WantsExpression2 = false;
+            WantsExpression3 = false;
+            WantsExpression4 = false;
             // 注意：WantsToFall 由 MovementParameterProcessor 每帧计算，不在这里清理
         }
 

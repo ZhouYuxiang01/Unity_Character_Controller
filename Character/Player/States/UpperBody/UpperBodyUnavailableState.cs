@@ -1,4 +1,5 @@
 using Core.StateMachine;
+using Items.Core;
 
 namespace Characters.Player.States
 {
@@ -9,6 +10,21 @@ namespace Characters.Player.States
         public override void Enter()
         {
             player.AnimFacade.SetLayerWeight(1, 0f, 0.2f);
+
+            // 强制卸载当前物品并调用物品的退出方法，确保被打断时物品能正确清理
+            if (player != null && player.EquipmentDriver != null)
+            {
+                var director = player.EquipmentDriver.CurrentItemDirector;
+                // 先通知物品进行强制退出逻辑（停特效/解绑输入等）
+                director?.OnForceUnequip();
+
+                // 然后真正卸载物品实体并清理驱动器状态
+                player.EquipmentDriver.UnequipCurrentItem();
+
+                // 清理黑板上的装备意图
+                if (player.RuntimeData != null)
+                    player.RuntimeData.CurrentItem = null;
+            }
         }
 
         public override void Exit()
