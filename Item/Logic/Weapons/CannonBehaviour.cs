@@ -61,7 +61,7 @@ namespace Items.Logic.Weapons
                 _fireRate = Mathf.Max(0.001f, interval);
             }
 
-            Debug.Log($"<color=#00FF00>[CANNON]</color> 灵魂注入成功！当前物品名: {_instance.BaseData.DisplayName}");
+            //Debug.Log($"<color=#00FF00>[CANNON]</color> 注入成功！当前物品名: {_instance.BaseData.DisplayName}");
         }
 
         // 装备入场 拔枪流程 
@@ -90,7 +90,7 @@ namespace Items.Logic.Weapons
                     _ikActive = true;
                 }
 
-                Debug.Log($"<color=#00FF00>[CANNON]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
+                //Debug.Log($"<color=#00FF00>[CANNON]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
             }
 
             // 装备动画时长 
@@ -125,7 +125,7 @@ namespace Items.Logic.Weapons
                     {
                         _player.RuntimeData.WantsLeftHandIK = true;
                         _ikActive = true;
-                        Debug.Log("<color=#00FF00>[CANNON]</color> 延时开启左手 IK。");
+                        //Debug.Log("<color=#00FF00>[CANNON]</color> 延时开启左手 IK。");
                     }
                 }
             }
@@ -142,11 +142,11 @@ namespace Items.Logic.Weapons
                         _player.RuntimeData.WantsLeftHandIK = false;
                         _player.RuntimeData.LeftHandGoal = null;
                         _ikActive = false;
-                        Debug.Log("<color=#FF0000>[CANNON]</color> 延时关闭左手 IK。");
+                        //Debug.Log("<color=#FF0000>[CANNON]</color> 延时关闭左手 IK。");
                     }
                     else
                     {
-                        Debug.Log("<color=#FFFF00>[CANNON]</color> 跳过延时关闭 IK，因为当前装备已更换。");
+                        //Debug.Log("<color=#FFFF00>[CANNON]</color> 跳过延时关闭 IK，因为当前装备已更换。");
                     }
                 }
             }
@@ -158,7 +158,7 @@ namespace Items.Logic.Weapons
                 {
                     // 硬直结束 
                     _isEquipping = false;
-                    Debug.Log("<color=#00FF00>[CANNON]</color> 拔枪完毕！进入战备状态。");
+                    //Debug.Log("<color=#00FF00>[CANNON]</color> 拔枪完毕！进入战备状态。");
 
                     // 播放待机动画 
                     if (_cannonConfig != null && _cannonConfig.EquipIdleAnim != null && _player != null)
@@ -242,7 +242,7 @@ namespace Items.Logic.Weapons
                 _ikDisableScheduled = true;
                 _ikDisableTimePoint = Time.time + _cannonConfig.DisableIKTime;
 
-                Debug.Log($"<color=#FF8800>[CANNON]</color> 计划在 {_cannonConfig.DisableIKTime:0.00}s 后关闭左手 IK（相对于收起动画开始）。");
+                //Debug.Log($"<color=#FF8800>[CANNON]</color> 计划在 {_cannonConfig.DisableIKTime:0.00}s 后关闭左手 IK（相对于收起动画开始）。");
             }
             else
             {
@@ -273,7 +273,7 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            Debug.Log("<color=#FF0000>[CANNON]</color> 已发起收枪流程，等待延时关闭 IK（若配置）。");
+            //Debug.Log("<color=#FF0000>[CANNON]</color> 已发起收枪流程，等待延时关闭 IK（若配置）。");
         }
 
         // 尝试开火 检查冷却 生成特效与投射物 
@@ -325,7 +325,7 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            Debug.Log("<color=#FF8800>[CANNON]</color> 砰！检测到瞄准状态，成功开火！");
+            //Debug.Log("<color=#FF8800>[CANNON]</color> 砰！检测到瞄准状态，成功开火！");
         }
 
         // 应用后坐力 炮的后坐力更大 
@@ -354,7 +354,7 @@ namespace Items.Logic.Weapons
                 _player.Config.Core.PitchLimits.y
             );
 
-            Debug.Log($"<color=#FF8800>[CANNON]</color> 一次性后坐力已应用！俯仰: {finalPitch}°, 偏航: {finalYaw}° (yawSign: {yawSign})");
+            //Debug.Log($"<color=#FF8800>[CANNON]</color> 一次性后坐力已应用！俯仰: {finalPitch}°, 偏航: {finalYaw}° (yawSign: {yawSign})");
         }
     }
 }

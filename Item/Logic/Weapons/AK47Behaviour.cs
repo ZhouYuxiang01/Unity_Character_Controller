@@ -73,7 +73,7 @@ namespace Items.Logic.Weapons
                 _fireRate = Mathf.Max(0.001f, interval);
             }
 
-            Debug.Log($"<color=#00FF00>[AK46]</color> 灵魂注入成功！当前物品名: {_instance.BaseData.DisplayName}");
+            //Debug.Log($"<color=#00FF00>[AK46]</color> 实例注入成功！当前物品名: {_instance.BaseData.DisplayName}");
         }
 
         // 装备入场 开始拔枪流程 设置 IK 目标 
@@ -102,7 +102,7 @@ namespace Items.Logic.Weapons
                     _ikActive = true;
                 }
 
-                Debug.Log($"<color=#00FF00>[AK46]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
+                //Debug.Log($"<color=#00FF00>[AK46]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
             }
 
             // 装备动画的时长 在此期间禁止开火 
@@ -115,7 +115,7 @@ namespace Items.Logic.Weapons
                 _player.AnimFacade.PlayTransition(_akconfig.EquipAnim, _akconfig.EquipAnimPlayOptions);
             }
 
-            Debug.Log($"<color=#FFFF00>[AK46]</color> 正在拔枪... {equipAnimDuration} 秒内禁止开火。");
+            //Debug.Log($"<color=#FFFF00>[AK46]</color> 正在拔枪... {equipAnimDuration} 秒内禁止开火。");
         }
 
         // 逻辑更新 每帧处理 IK 调度 瞄准切换 开火输入 
@@ -138,7 +138,7 @@ namespace Items.Logic.Weapons
                     {
                         _player.RuntimeData.WantsLeftHandIK = true;
                         _ikActive = true;
-                        Debug.Log("<color=#00FF00>[AK46]</color> 延时开启左手 IK。");
+                        //Debug.Log("<color=#00FF00>[AK46]</color> 延时开启左手 IK。");
                     }
                 }
             }
@@ -157,11 +157,11 @@ namespace Items.Logic.Weapons
                         _player.RuntimeData.WantsLeftHandIK = false;
                         _player.RuntimeData.LeftHandGoal = null;
                         _ikActive = false;
-                        Debug.Log("<color=#FF0000>[AK46]</color> 延时关闭左手 IK。");
+                        //Debug.Log("<color=#FF0000>[AK46]</color> 延时关闭左手 IK。");
                     }
                     else
                     {
-                        Debug.Log("<color=#FFFF00>[AK46]</color> 跳过延时关闭 IK，因为当前装备已更换。");
+                        //Debug.Log("<color=#FFFF00>[AK46]</color> 跳过延时关闭 IK，因为当前装备已更换。");
                     }
                 }
             }
@@ -173,7 +173,7 @@ namespace Items.Logic.Weapons
                 {
                     // 硬直结束 转入待机 
                     _isEquipping = false;
-                    Debug.Log("<color=#00FF00>[AK46]</color> 拔枪完毕！进入战备状态。");
+                    //Debug.Log("<color=#00FF00>[AK46]</color> 拔枪完毕！进入战备状态。");
 
                     // 播放装备后的待机动画 如果有配置的话 
                     if (_akconfig != null && _akconfig.EquipIdleAnim != null && _player != null)
@@ -349,7 +349,7 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            Debug.Log($"<color=#FF8800>[AK46]</color> 砰！检测到瞄准状态，成功开火！");
+            //Debug.Log($"<color=#FF8800>[AK46]</color> 砰！检测到瞄准状态，成功开火！");
         }
 
         // 应用后坐力效果 通过修改视角参数而不是旋转确保被权威系统整合 
@@ -379,7 +379,7 @@ namespace Items.Logic.Weapons
                 _player.Config.Core.PitchLimits.y
             );
 
-            Debug.Log($"<color=#FF8800>[AK46]</color> 一次性后坐力已应用！俯仰: {finalPitch}°, 偏航: {finalYaw}° (yawSign: {yawSign})");
+            //Debug.Log($"<color=#FF8800>[AK46]</color> 一次性后坐力已应用！俯仰: {finalPitch}°, 偏航: {finalYaw}° (yawSign: {yawSign})");
         }
     }
 }

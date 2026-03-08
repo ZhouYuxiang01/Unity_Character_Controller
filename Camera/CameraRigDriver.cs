@@ -106,19 +106,19 @@ namespace Core.CameraSystem
                 // 打中实体，瞄准点就是击中点
                 finalAimPoint = hitInfo.point;
 
-                if (_debugExecutionOrder)
-                    Debug.DrawLine(screenRay.origin, hitInfo.point, Color.red);
+                //if (_debugExecutionOrder)
+                    //Debug.DrawLine(screenRay.origin, hitInfo.point, Color.red);
             }
             else
             {
                 // 没打中任何东西，瞄准点就是射线尽头的一个虚拟点
                 finalAimPoint = screenRay.GetPoint(_aimRaycastDistance);
 
-                if (_debugExecutionOrder)
-                    Debug.DrawLine(screenRay.origin, finalAimPoint, Color.yellow);
+                //if (_debugExecutionOrder)
+                    //Debug.DrawLine(screenRay.origin, finalAimPoint, Color.yellow);
             }
 
-            // 【核心解耦点】：将计算结果推入黑板
+            // 将计算结果推入黑板
             data.TargetAimPoint = finalAimPoint;
             data.CameraLookDirection = _mainCamera.transform.forward;
         }

@@ -56,6 +56,15 @@ namespace Items.Logic.Weapons
         // 这防止了连段时旧动画的回调覆盖新动画的状态 
         private int _attackToken;
 
+        // --- 零GC改造 ---
+        // 关键点：攻击时不要 `() => {}` 这种捕获局部变量的 lambda
+        // 否则每次攻击都会创建闭包对象 -> 产生 GC.Alloc
+        // 解决方案：
+        //  1) 用字段保存“本次攻击开始时的令牌快照”
+        //  2) 用缓存的成员方法委托作为 OnEnd 回调（不捕获任何局部变量）
+        private int _attackTokenSnapshot;
+        private System.Action _onAttackAnimEndCached;
+
         // 可调参数 上半身层级索引 与 PlayerController 配置一致 
         private const int UpperBodyLayer = 1;
         // 动画淡出的默认时长 在 0.15 秒内平滑淡出上半身层 
@@ -83,6 +92,10 @@ namespace Items.Logic.Weapons
             // 清空上一帧的输入记录 避免装备瞬间误触发攻击 
             _lastFireInput = false;
             _attackToken = 0;
+
+            // 缓存回调（只做一次）
+            // 注意：这里缓存的是成员方法引用 不捕获任何局部变量 运行时不会产生 GC
+            _onAttackAnimEndCached ??= OnAttackAnimationEnd;
 
             // 确保上半身层可见 装备动画可能需要在这一层播放 
             if (_player != null && _player.AnimFacade != null)
@@ -213,7 +226,10 @@ namespace Items.Logic.Weapons
             // 每次新攻击递增令牌 使旧的结束回调失效 
             // 这防止连段时旧动画的回调把新攻击的状态打回 Idle 导致连击链断裂 
             _attackToken++;
-            int token = _attackToken;
+
+            // 零GC改造：把“本次攻击令牌快照”存到字段
+            // OnEnd 回调中只读字段 不再捕获局部变量 避免闭包分配
+            _attackTokenSnapshot = _attackToken;
 
             // 播放攻击动画到上半身层 
             AnimPlayOptions options = opt;
@@ -227,20 +243,28 @@ namespace Items.Logic.Weapons
             if (_config.SwingSound != null)
                 AudioSource.PlayClipAtPoint(_config.SwingSound, transform.position);
 
-            // 绑定动画结束回调 仅当令牌匹配时才执行 
-            // 这确保连段时新动画的回调会覆盖旧动画 避免状态混乱 
-            _player.AnimFacade.SetOnEndCallback(() =>
-            {
-                // 令牌不匹配说明这是旧攻击的回调 直接忽略 
-                if (token != _attackToken) return;
-
-                // 攻击自然结束 转入待机并淡出上半身层 
-                _phase = SwordPhase.Idle;
-                _player.AnimFacade.SetLayerWeight(UpperBodyLayer, 0f, DefaultFadeOut);
-            }, UpperBodyLayer);
+            // 绑定动画结束回调
+            // 重要改动：这里传入缓存的成员方法引用 不创建 lambda
+            _player.AnimFacade.SetOnEndCallback(_onAttackAnimEndCached, UpperBodyLayer);
 
             // 立即递增连击索引 使得攻击中再次按下会执行下一段 
             _comboIndex = (_comboIndex + 1) % 3;
+        }
+
+        // 攻击动画自然结束的回调（零GC）
+        // 这里不能写成 lambda / local function 捕获外部变量 否则根据日志追踪 会重新引入 GC
+        private void OnAttackAnimationEnd()
+        {
+            if (_player == null || _player.AnimFacade == null)
+                return;
+
+            // 令牌不匹配说明这是旧攻击的回调 直接忽略
+            // 这里使用的是字段快照 不存在闭包
+            if (_attackTokenSnapshot != _attackToken) return;
+
+            // 攻击自然结束 转入待机并淡出上半身层
+            _phase = SwordPhase.Idle;
+            _player.AnimFacade.SetLayerWeight(UpperBodyLayer, 0f, DefaultFadeOut);
         }
 
         // 取消当前攻击 用于闪避 翻滚等高优先级动作 
