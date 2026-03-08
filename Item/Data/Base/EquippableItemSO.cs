@@ -30,19 +30,5 @@ namespace Items.Data
         public ClipTransition EquipIdleAnim;
         public AnimPlayOptions EquipIdleAnimOptions= AnimPlayOptions.UpperBodyDefault;
 
-        /// <summary>
-        /// 提供一个快捷方法，用于生成默认的上半身播放选项。
-        /// </summary>
-        public AnimPlayOptions GetUpperBodyPlayOptions()
-        {
-            return new AnimPlayOptions
-            {
-                Layer = 1,          // 强制指定到上半身层级 (Layer 1)
-                FadeDuration = -1f, // 使用 ClipTransition Inspector 中的默认值
-                Speed = -1f,
-                NormalizedTime = -1f,
-                ForcePhaseSync = false
-            };
-        }
     }
 }

@@ -12,32 +12,32 @@ namespace Characters.Player.Core.Interceptors
         {
             nextState = null;
 
-            // 1. 仅在当前为 Unavailable 上半身状态时才需要判断是否退出
+            // 1. 仅在当前为 Unavailable 时考虑退出
             if (currentState == null || currentState is not UpperBodyUnavailableState)
             {
                 return false;
             }
 
-            // 2. 参考 EnterUnavailable 的实现：通过全局状态机判断是否仍在 Vault/Fall
+            // 2. 获取外层基础状态（EnterUnavailable 中用来触发进入 Unavailable 的那些状态）
             var playerBaseState = player.StateMachine.CurrentState;
 
-            // 如果不再处于 Vault 或 Fall，则应该回到正常的上半身状态
-            if (!(playerBaseState is PlayerVaultState) && !(playerBaseState is PlayerFallState))
+            // 如果仍处于 Vault / Fall / Roll 中，则不退出 Unavailable
+            if (playerBaseState is PlayerVaultState || playerBaseState is PlayerFallState || playerBaseState is PlayerRollState)
             {
-                // 3. 根据是否有装备选择回到 HoldItem 或 EmptyHands
-                if (player.RuntimeData != null && player.RuntimeData.CurrentItem != null)
-                {
-                    nextState = player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyHoldItemState>();
-                }
-                else
-                {
-                    nextState = player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyEmptyState>();
-                }
-
-                return true;
+                return false;
             }
 
-            return false;
+            // 3. 否则根据黑板是否有装备决定回 HoldItem 或 Empty
+            if (player.RuntimeData != null && player.RuntimeData.CurrentItem != null)
+            {
+                nextState = player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyHoldItemState>();
+            }
+            else
+            {
+                nextState = player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyEmptyState>();
+            }
+
+            return true;
         }
     }
 }

@@ -19,6 +19,9 @@ namespace Characters.Player.Expression
         // whether a transient expression is playing
         private bool _isPlayingTransient;
 
+        // token to identify the latest transient so that older interrupted transients don't trigger end logic
+        private int _transientPlayToken;
+
         public FacialController(AnimancerComponent animancer, PlayerSO config, PlayerRuntimeData runtimeData = null)
         {
             _config = config;
@@ -50,9 +53,9 @@ namespace Characters.Player.Expression
         public void Update()
         {
             if (_data == null || _config == null) return;
-            if (_isPlayingTransient) return;
             if (_config.Emj == null) return;
 
+            // Allow transient expressions to interrupt each other by not returning early when one is playing.
             if (_data.WantsExpression1)
             {
                 PlayTransientExpression(_config.Emj.SpecialExpression1, 0.1f);
@@ -75,12 +78,19 @@ namespace Characters.Player.Expression
         {
             if (expressionClip == null || expressionClip.Clip == null) return;
 
+            // Increment token so any previous transient's end callback will be ignored.
+            _transientPlayToken++;
+            var token = _transientPlayToken;
+
             _isPlayingTransient = true;
 
             var state = _layer.Play(expressionClip, fadeDuration);
 
             state.Events(this).OnEnd = () =>
             {
+                // Only handle the end for the most recently started transient.
+                if (token != _transientPlayToken) return;
+
                 _isPlayingTransient = false;
                 PlayBaseExpression(0.2f);
             };

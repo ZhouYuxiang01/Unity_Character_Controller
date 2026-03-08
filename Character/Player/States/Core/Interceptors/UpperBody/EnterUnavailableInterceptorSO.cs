@@ -22,8 +22,8 @@ namespace Characters.Player.Core.Interceptors
             // 注意：这里假设你的下半身状态存放在 player.RuntimeData.CurrentState，如有偏差请自行替换
             var playerbasestate = player.StateMachine.CurrentState;
 
-            // 3. 核心判断：处于 Vault 或 Fall
-            if (playerbasestate is PlayerVaultState || playerbasestate is PlayerFallState)
+            // 3. 核心判断：处于 Vault / Fall / Roll
+            if (playerbasestate is PlayerVaultState || playerbasestate is PlayerFallState || playerbasestate is PlayerRollState)
             {
                 // 获取并切入 Unavailable 状态
                 nextState = player.UpperBodyCtrl.StateRegistry.GetState<UpperBodyUnavailableState>();

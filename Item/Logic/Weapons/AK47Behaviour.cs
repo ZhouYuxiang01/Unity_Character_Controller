@@ -52,7 +52,9 @@ namespace Items.Logic.Weapons
 
             if (_akconfig != null)
             {
-                _fireRate = Mathf.Max(0.001f, _akconfig.FireRate);
+                // Prefer explicit ShootInterval if set (> 0), otherwise fallback to base FireRate
+                float interval = _akconfig.ShootInterval > 0f ? _akconfig.ShootInterval : _akconfig.FireRate;
+                _fireRate = Mathf.Max(0.001f, interval);
             }
 
             Debug.Log($"<color=#00FF00>[AK46]</color> 灵魂注入成功！当前物品名: {_instance.BaseData.DisplayName}");
@@ -108,13 +110,22 @@ namespace Items.Logic.Weapons
             // --- IK 调度 ---
             if (_ikEnableScheduled && Time.time >= _ikEnableTimePoint)
             {
-                _ikEnableScheduled = false;
-                // 仅在该武器仍为当前装备时启用 IK
-                if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == _instance)
+                // Avoid enabling left-hand IK while still in equip hardening.
+                if (_isEquipping)
                 {
-                    _player.RuntimeData.WantsLeftHandIK = true;
-                    _ikActive = true;
-                    Debug.Log("<color=#00FF00>[AK46]</color> 延时开启左手 IK。");
+                    // Postpone enable until equip hardening ends
+                    _ikEnableTimePoint = _equipEndTime + 0.001f;
+                }
+                else
+                {
+                    _ikEnableScheduled = false;
+                    // 仅在该武器仍为当前装备时启用 IK
+                    if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == _instance)
+                    {
+                        _player.RuntimeData.WantsLeftHandIK = true;
+                        _ikActive = true;
+                        Debug.Log("<color=#00FF00>[AK46]</color> 延时开启左手 IK。");
+                    }
                 }
             }
 
@@ -281,9 +292,81 @@ namespace Items.Logic.Weapons
 
             if (_muzzleFlash != null) _muzzleFlash.Play();
 
+            // Play shooting sound if configured
+            if (_akconfig != null && _akconfig.ShootSound != null && _muzzle != null)
+            {
+                AudioSource.PlayClipAtPoint(_akconfig.ShootSound, _muzzle.position);
+            }
+
+            // Spawn muzzle VFX if configured
+            if (_akconfig != null && _akconfig.MuzzleVFXPrefab != null && _muzzle != null)
+            {
+                var muzzleVFX = Object.Instantiate(_akconfig.MuzzleVFXPrefab, _muzzle.position, _muzzle.rotation);
+                // 保持特效在 muzzle 位置作为子物体
+                muzzleVFX.transform.parent = _muzzle;
+            }
+
+            // 应用后坐力效果
+            ApplyRecoil();
+
+            // Spawn projectile if configured
+            if (_akconfig != null && _akconfig.ProjectilePrefab != null && _muzzle != null)
+            {
+                var proj = Object.Instantiate(_akconfig.ProjectilePrefab, _muzzle.position, _muzzle.rotation);
+                // Ensure it exists in world root (not parented to the weapon)
+                proj.transform.parent = null;
+
+                var rb = proj.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    // Set initial velocity directly for consistent behavior
+                    rb.velocity = _muzzle.forward * _akconfig.ProjectileSpeed;
+                }
+
+                // If the projectile has a SimpleProjectile component, assign hit sound from AKSO
+                var simple = proj.GetComponent<SimpleProjectile>();
+                if (simple != null)
+                {
+                    simple.hitSound = _akconfig.ProjectileHitSound;
+                }
+            }
+
             // 如果有后坐力动画、屏幕震动等，全在这里调用
 
             Debug.Log($"<color=#FF8800>[AK46]</color> 砰！检测到瞄准状态，成功开火！");
+        }
+
+        /// <summary>
+        /// 应用后坐力效果：修改视角参数（ViewYaw/ViewPitch）而不是权威旋转
+        /// 这样后坐力会被 ViewRotationProcessor 纳入最终的权威旋转计算，不会被下一帧重置
+        /// </summary>
+        private void ApplyRecoil()
+        {
+            if (_player == null || _player.RuntimeData == null || _akconfig == null) return;
+
+            // 计算随机化的俯仰与偏航
+            float pitchNoise = Random.Range(-_akconfig.RecoilPitchRandomRange, _akconfig.RecoilPitchRandomRange);
+            float yawNoise = Random.Range(-_akconfig.RecoilYawRandomRange, _akconfig.RecoilYawRandomRange);
+
+            float finalPitch = _akconfig.RecoilPitchAngle + pitchNoise;
+            float finalYaw = _akconfig.RecoilYawAngle + yawNoise;
+
+            // 直接修改 ViewPitch 和 ViewYaw（而不是 AuthorityRotation）
+            // 这样后坐力会被纳入权威参考系，下一帧 ViewRotationProcessor 会基于这些值计算权威旋转
+            // 后坐力的偏航方向随机
+            float yawSign = Random.value > 0.5f ? 1f : -1f;
+            
+            _player.RuntimeData.ViewPitch -= finalPitch;  // 负值使视角向上
+            _player.RuntimeData.ViewYaw += yawSign * finalYaw;  // 左右偏航
+
+            // 应用俯仰限制（保持与 ViewRotationProcessor 的逻辑一致）
+            _player.RuntimeData.ViewPitch = Mathf.Clamp(
+                _player.RuntimeData.ViewPitch,
+                _player.Config.Core.PitchLimits.x,
+                _player.Config.Core.PitchLimits.y
+            );
+
+            Debug.Log($"<color=#FF8800>[AK46]</color> 一次性后坐力已应用！俯仰: {finalPitch}°, 偏航: {finalYaw}° (yawSign: {yawSign})");
         }
     }
 }

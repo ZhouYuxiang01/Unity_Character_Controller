@@ -20,7 +20,7 @@ namespace Characters.Player.States
         public PlayerLandState(PlayerController player) : base(player) { }
 
         // 落地缓冲中一般不希望被通用强制打断（避免反复进入/退出）。
-        protected override bool CheckInterrupts() => false;
+        // protected override bool CheckInterrupts() => false;
 
         public override void Enter()
         {

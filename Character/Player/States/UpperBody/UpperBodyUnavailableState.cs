@@ -11,19 +11,14 @@ namespace Characters.Player.States
         {
             player.AnimFacade.SetLayerWeight(1, 0f, 0.2f);
 
-            // 强制卸载当前物品并调用物品的退出方法，确保被打断时物品能正确清理
+            // 强制卸载“当前已装备的实体”，确保被打断时物品能正确清理。
+            // 注意：不要在这里改 RuntimeData.CurrentItem。
+            // RuntimeData.CurrentItem 表达的是“玩家的装备意图/背包选择”，
+            // Fall/Unavailable 只应该让上半身暂时不可用，而不是清空玩家的装备选择。
             if (player != null && player.EquipmentDriver != null)
             {
-                var director = player.EquipmentDriver.CurrentItemDirector;
-                // 先通知物品进行强制退出逻辑（停特效/解绑输入等）
-                director?.OnForceUnequip();
-
-                // 然后真正卸载物品实体并清理驱动器状态
+                // EquipmentDriver.UnequipCurrentItem 内部会调用 OnForceUnequip，避免重复调用。
                 player.EquipmentDriver.UnequipCurrentItem();
-
-                // 清理黑板上的装备意图
-                if (player.RuntimeData != null)
-                    player.RuntimeData.CurrentItem = null;
             }
         }
 

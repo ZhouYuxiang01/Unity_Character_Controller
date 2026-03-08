@@ -435,7 +435,7 @@ namespace Characters.Player.Core
             {
                 ResetCurveDrivenState();
 
-                // 关键：清空 SmoothDampAngle 的惯性，避免曲线驱动第一帧被残留速度影响
+                // 清空 SmoothDampAngle 的惯性，避免曲线驱动第一帧被残留速度影响
                 _data.RotationVelocity = 0f;
 
                 _didAlignOnMixedToInput = false;

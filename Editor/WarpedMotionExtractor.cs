@@ -14,6 +14,7 @@ namespace Editors
         [Header("Global Settings")]
         private GameObject _targetPrefab;
         private PlayerSO _targetPlayerSO;
+        private UnityEngine.Object _targetAsset; // 支持任意序列化文件（Asset）
         private int _sampleRate = 60;
 
         // 批量设置的目标类型
@@ -31,6 +32,7 @@ namespace Editors
 
             _targetPrefab = (GameObject)EditorGUILayout.ObjectField("Character Prefab", _targetPrefab, typeof(GameObject), false);
             _targetPlayerSO = (PlayerSO)EditorGUILayout.ObjectField("Player Config (SO)", _targetPlayerSO, typeof(PlayerSO), false);
+            _targetAsset = EditorGUILayout.ObjectField(new GUIContent("Target Asset (任意序列化文件)", "可选择任意序列化的 Unity 对象（ScriptableObject、Asset 等）作为扫描根"), _targetAsset, typeof(UnityEngine.Object), false);
             _sampleRate = EditorGUILayout.IntSlider("Sample Rate", _sampleRate, 30, 120);
 
             GUILayout.Space(15);
@@ -50,7 +52,7 @@ namespace Editors
 
             GUILayout.Space(20);
 
-            bool canBake = _targetPrefab != null && _targetPlayerSO != null;
+            bool canBake = _targetPrefab != null && (_targetAsset != null || _targetPlayerSO != null);
             GUI.backgroundColor = canBake ? new Color(0.6f, 1f, 0.6f) : Color.white;
             GUI.enabled = canBake;
             if (GUILayout.Button("一键全量烘焙 (自动探测 + 覆盖)", GUILayout.Height(40)))
@@ -62,27 +64,35 @@ namespace Editors
         }
 
         /// <summary>
-        /// 递归扫描所有ScriptableObject引用，处理所有WarpedMotionData。
+        /// 递归扫描所有引用，处理所有 WarpedMotionData。
+        /// 支持以任意序列化 UnityEngine.Object 为根（例如 ScriptableObject、其他 Asset 等）。
+        /// 仅在遇到 ScriptableObject 时继续深入递归（避免无限递归到场景对象）。
         /// 支持字段为 List/数组/集合/ScriptableObject。
         /// </summary>
         private void ScanWarpedMotionDataRecursive(object target, Action<WarpedMotionData, FieldInfo, object> onFound)
         {
             if (target == null) return;
             var type = target.GetType();
-            if (!(target is ScriptableObject)) return;
+            // 仅处理 UnityEngine.Object 或普通托管对象中的字段
+            if (!typeof(UnityEngine.Object).IsAssignableFrom(type) && !type.IsClass) return;
+
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (var field in fields)
             {
                 var value = field.GetValue(target);
                 if (value == null) continue;
-                if (field.FieldType == typeof(WarpedMotionData))
+
+                // 直接命中 WarpedMotionData 字段
+                if (field.FieldType == typeof(WarpedMotionData) || value is WarpedMotionData)
                 {
                     onFound((WarpedMotionData)value, field, target);
                 }
-                else if (typeof(ScriptableObject).IsAssignableFrom(field.FieldType))
+                // 如果字段是 UnityEngine.Object（如 ScriptableObject 等），仅在其为 ScriptableObject 时递归
+                else if (value is ScriptableObject so)
                 {
-                    ScanWarpedMotionDataRecursive(value, onFound);
+                    ScanWarpedMotionDataRecursive(so, onFound);
                 }
+                // 支持 IEnumerable（集合、数组、List 等），对集合内部元素进行检查
                 else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(field.FieldType) && field.FieldType != typeof(string))
                 {
                     var enumerable = value as System.Collections.IEnumerable;
@@ -95,9 +105,9 @@ namespace Editors
                             {
                                 onFound(wmd, field, target);
                             }
-                            else if (item is ScriptableObject so)
+                            else if (item is ScriptableObject itemSo)
                             {
-                                ScanWarpedMotionDataRecursive(so, onFound);
+                                ScanWarpedMotionDataRecursive(itemSo, onFound);
                             }
                         }
                     }
@@ -106,15 +116,16 @@ namespace Editors
         }
 
         /// <summary>
-        /// 批量修改 SO 中所有 WarpedMotionData 的 Type
+        /// 批量修改 目标 Asset 中所有 WarpedMotionData 的 Type
         /// </summary>
         private void SetAllFieldsToType(WarpedType targetType)
         {
-            if (_targetPlayerSO == null) return;
+            var root = _targetAsset != null ? _targetAsset : (UnityEngine.Object)_targetPlayerSO;
+            if (root == null) return;
 
-            Undo.RecordObject(_targetPlayerSO, "Batch Set Warped Type");
+            Undo.RecordObject(root, "Batch Set Warped Type");
             int count = 0;
-            ScanWarpedMotionDataRecursive(_targetPlayerSO, (data, field, owner) => {
+            ScanWarpedMotionDataRecursive(root, (data, field, owner) => {
                 if (data != null)
                 {
                     data.Type = targetType;
@@ -122,15 +133,18 @@ namespace Editors
                 }
             });
 
-            EditorUtility.SetDirty(_targetPlayerSO);
+            EditorUtility.SetDirty(root);
             Debug.Log($"<color=blue>[Extractor] 已将 {count} 个动作类型一键设为: {targetType}</color>");
         }
 
         private void BakeAllWarpedDataInSO()
         {
-            Undo.RecordObject(_targetPlayerSO, "Bake All Warped Motion Data");
+            var root = _targetAsset != null ? _targetAsset : (UnityEngine.Object)_targetPlayerSO;
+            if (root == null) return;
+
+            Undo.RecordObject(root, "Bake All Warped Motion Data");
             var allFields = new List<(WarpedMotionData, FieldInfo, object)>();
-            ScanWarpedMotionDataRecursive(_targetPlayerSO, (data, field, owner) => {
+            ScanWarpedMotionDataRecursive(root, (data, field, owner) => {
                 if (data != null)
                     allFields.Add((data, field, owner));
             });
@@ -189,7 +203,7 @@ namespace Editors
             EditorUtility.ClearProgressBar();
             if (anyChange)
             {
-                EditorUtility.SetDirty(_targetPlayerSO);
+                EditorUtility.SetDirty(root);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 EditorUtility.DisplayDialog("烘焙完成", $"成功更新了 {successCount} 个动画的数据！", "确定");

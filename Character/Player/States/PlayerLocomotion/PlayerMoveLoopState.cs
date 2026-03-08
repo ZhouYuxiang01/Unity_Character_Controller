@@ -7,19 +7,6 @@ namespace Characters.Player.States
 {
     /// <summary>
     /// 玩家的"持续移动"循环状态。
-    /// 
-    /// 职责：
-    /// 1. 根据运动状态（Walk/Jog/Sprint）和脚相位选择对应的离散循环动画。
-    /// 2. 直接播放选中的动画（不使用 1D 混合器，避免浮点参数问题）。
-    /// 3. 每帧计算脚步循环相位。
-    /// 4. 检测运动状态变化，切换到对应动画。
-    /// 5. 检测退出条件（无输入、瞄准、跳跃等）。
-    /// 
-    /// 关键点：
-    /// - 使用离散动画代替 1D 混合器，避免浮点参数抖动
-    /// - 当前仅实现前进方向（DesiredLocalMoveAngle ~-45 to 45）
-    /// - 脚相位由 AnimancerState.NormalizedTime 计算
-    /// - 未来可扩展到8个方向或更多
     /// </summary>
     public class PlayerMoveLoopState : PlayerBaseState
     {

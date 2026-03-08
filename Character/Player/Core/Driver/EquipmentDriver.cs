@@ -30,7 +30,7 @@ namespace Characters.Player.Core
         /// <param name="itemInstance">来自背包/黑板的唯一物品灵魂</param>
         public void EquipItem(ItemInstance itemInstance)
         {
-            // 1. 销毁旧肉体
+            // 1. 卸载旧物品（会触发 OnForceUnequip）
             UnequipCurrentItem();
 
             // 2. 缓存新灵魂
@@ -40,6 +40,7 @@ namespace Characters.Player.Core
             if (CurrentItemData == null)
             {
                 // 空手状态，或者该物品不可被装备 (没有 EquippableItemSO)
+                Debug.Log("[EquipmentDriver] EquipItem -> CurrentItemData is null (empty hands or not equippable)");
                 _player?.NotifyEquipmentChanged();
                 return;
             }
@@ -60,6 +61,20 @@ namespace Characters.Player.Core
 
                 // ✨ 6. 灵魂注入！把实例数据强行塞进生成的模型脚本中！
                 CurrentItemDirector?.Initialize(CurrentItemInstance);
+
+                if (CurrentItemDirector == null)
+                {
+                    Debug.LogWarning($"[EquipmentDriver] Prefab '{CurrentItemData.Prefab.name}' has no IHoldableItem component. Equip/Unequip animations will not play.");
+                }
+                else
+                {
+                    Debug.Log($"[EquipmentDriver] Equipped '{CurrentItemData.DisplayName}' -> calling OnEquipEnter");
+                    CurrentItemDirector.OnEquipEnter(_player);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[EquipmentDriver] EquipItem failed: Prefab or WeaponContainer is null.");
             }
 
             // 通知外部 UI 等系统更新
@@ -71,6 +86,14 @@ namespace Characters.Player.Core
         /// </summary>
         public void UnequipCurrentItem()
         {
+            // 1. 先让旧物品执行下线流程（收枪/收剑动画、清理IK调度等）
+            if (CurrentItemDirector != null)
+            {
+                Debug.Log("[EquipmentDriver] UnequipCurrentItem -> calling OnForceUnequip");
+                CurrentItemDirector.OnForceUnequip();
+            }
+
+            // 2. 再销毁旧肉体
             if (_currentWeaponInstance != null)
             {
                 Object.Destroy(_currentWeaponInstance);

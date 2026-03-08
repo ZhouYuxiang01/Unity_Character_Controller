@@ -15,12 +15,10 @@ using Items.Core;
 namespace Characters.Player
 {
     /// <summary>
-    /// 玩家角色的核心控制器。
-    /// 职责:
-    /// 1. 作为整个玩家系统的根节点（Root）。
-    /// 2. 严格遵循黄金初始化三阶段：Awake(内存/依赖) -> Start(环境配置) -> BootUp(状态机点火)。
-    /// 3. 在 Update 循环中，按固定物理与逻辑顺序驱动各子系统更新。
-    /// 4. 不包含具体游戏逻辑，仅负责组件整合、指令分发。
+    /// 玩家角色的核心控制器
+    /// 作为整个玩家系统的根节点（Root）
+    /// 在 Update 循环中 按固定物理与逻辑顺序驱动各子系统更新
+    /// 不包含具体游戏逻辑 仅负责组件整合、指令分发
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputReader))]
@@ -28,44 +26,40 @@ namespace Characters.Player
     [RequireComponent(typeof(AnimancerFacade))]
     public class PlayerController : MonoBehaviour
     {
-        // ==========================================
-        // 1. 配置字段 (Inspector)
-        // ==========================================
-        [Header("--- 核心配置 (Core Config) ---")]
-        [Tooltip("玩家的配置文件（ScriptableObject）")]
+        [Header("--- 核心配置 ---")]
+        [Tooltip("玩家的配置文件")]
         public PlayerSO Config;
         [Tooltip("玩家摄像机（可选，未指定时自动获取 MainCamera）")]
         public Transform PlayerCamera;
 
-        [Header("--- 表现与挂点 (Visuals & Sockets) ---")]
+        [Header("--- 表现与挂点 ---")]
         public PlayerIKSourceBase IKSource;
         public Transform WeaponContainer;
-        public Transform RightHandBone; // 用于约束
-        public Animator animator;       // 预留 Animator 引用，供特殊需求使用（如 IK）
+        public Transform RightHandBone; // 用于约束右手ik的容器，必须指定
+        public Animator animator; 
 
         [Header("--- 调试选项 (Debug Options) ---")]
-        [Tooltip("如果配置了此项，游戏开始时会自动装备这个物品")]
-        public EquippableItemSO DefaultEquipment;
+        [Tooltip("如果配置了此项，游戏开始时会自动装备这个物品（最多 3 个，用于调试）")]
+        public EquippableItemSO DefaultEquipment1;
+        public EquippableItemSO DefaultEquipment2;
+        public EquippableItemSO DefaultEquipment3;
         public bool statedebug = false;
 
-
-        // ==========================================
-        // 2. 运行时核心引用 (Runtime References)
-        // ==========================================
+        // 运行时核心引用
         public StateMachine StateMachine { get; private set; }
         public GlobalInterruptProcessor InterruptProcessor { get; private set; }
         public PlayerRuntimeData RuntimeData { get; private set; }
         public Characters.Player.Expression.PlayerInventoryController InventoryController { get; private set; }
         public PlayerInputReader InputReader { get; private set; }
 
-        // --- 驱动器与外观层 ---
+        // 驱动器与外观层系统
         public AnimancerComponent Animancer { get; private set; }
         public IAnimationFacade AnimFacade { get; private set; }
         public CharacterController CharController { get; private set; }
         public MotionDriver MotionDriver { get; private set; }
         public EquipmentDriver EquipmentDriver { get; private set; }
 
-        // --- 状态注册表与子控制器 ---
+        // 状态注册表与子控制器
         public PlayerStateRegistry StateRegistry { get; private set; }
         public UpperBodyController UpperBodyCtrl { get; private set; } // 规范命名，公开供状态访问
         private FacialController _facialController;
@@ -73,15 +67,11 @@ namespace Characters.Player
         private IntentProcessorPipeline _intentProcessorPipeline;
         private CharacterStatusDriver _characterStatusDriver;
 
-        // --- 内部缓存 ---
+        // 内部缓存
         private PlayerBaseState _lastState;
         public event System.Action OnEquipmentChanged;
 
-
-        // ==========================================
-        // 阶段一：Awake (内存分配、找组件、依赖注入)
-        // 绝对不执行任何状态机逻辑！
-        // ==========================================
+        // 内存分配、找组件、依赖注入
         private void Awake()
         {
             // 1. 获取 Unity 原生与桥接组件
@@ -123,12 +113,9 @@ namespace Characters.Player
             }
         }
 
-        // ==========================================
-        // 阶段二：Start (环境预热 与 正式点火)
-        // ==========================================
         private void Start()
         {
-            // --- 预热环境 (Setup Environment) ---
+            // 运行环境准备
 
             // 1. 初始化摄像机
             InitializeCamera();
@@ -142,16 +129,8 @@ namespace Characters.Player
             // 3. 初始化初始装备
             InitializeEquipments();
 
-            // --- 正式点火 (Boot Up) ---
-
-            // 4. 启动状态机！引擎通电！
+            // 正式运行
             BootUpStateMachines();
-        }
-
-        private void OnDestroy()
-        {
-            // 释放输入绑定
-            InventoryController?.Dispose();
         }
 
         private void InitializeCamera()
@@ -172,29 +151,43 @@ namespace Characters.Player
 
         private void InitializeEquipments()
         {
-            if (DefaultEquipment != null)
+            // 支持最多三个调试装备，会放入快捷栏的前 3 格并自动装备第一个非空项
+            EquippableItemSO[] defaults = new EquippableItemSO[] { DefaultEquipment1, DefaultEquipment2, DefaultEquipment3 };
+            ItemInstance firstToEquip = null;
+
+            for (int i = 0; i < defaults.Length; i++)
             {
-                var instance = new ItemInstance(DefaultEquipment, 1);
-                InventoryController.AssignItemToSlot(1, instance);
+                var def = defaults[i];
+                if (def != null)
+                {
+                    var instance = new ItemInstance(def, 1);
+                    InventoryController.AssignItemToSlot(i, instance);
+
+                    if (firstToEquip == null)
+                    {
+                        firstToEquip = instance;
+                    }
+                }
+            }
+
+            // 自动装备第一个非空调试装备（保留原意图）
+            if (firstToEquip != null)
+            {
+                RuntimeData.CurrentItem = firstToEquip;
             }
         }
 
         private void BootUpStateMachines()
         {
-            // 1. 先启动全身/下半身底盘
             if (StateRegistry.InitialState != null)
             {
                 StateMachine.Initialize(StateRegistry.InitialState);
             }
 
-            // 2. 再启动上半身 
              if (UpperBodyCtrl.StateRegistry.InitialState != null)UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
         }
 
 
-        // ==========================================
-        // 阶段三：Update (固定管线流转)
-        // ==========================================
         private void Update()
         {
             _lastState = StateMachine.CurrentState as PlayerBaseState;
@@ -227,10 +220,10 @@ namespace Characters.Player
             // 8. 更新 IK 结算
             _ikController.Update();
 
-            // 9. 清理帧尾标记 (极度重要：防止意图残留到下一帧)
+            // 9. 清理帧尾标记 (防止意图残留到下一帧的防御性编程)
             RuntimeData.ResetIntetnt();
 
-            // --- 调试监控 ---
+            // --- 调试 ---
             if (statedebug && StateMachine.CurrentState != null && _lastState != null)
             {
                 if (StateMachine.CurrentState.GetType().Name != _lastState.GetType().Name)
@@ -240,9 +233,7 @@ namespace Characters.Player
             }
         }
 
-        // ==========================================
         // 外部通讯 API
-        // ==========================================
         public void PlayHurtExpression() => _facialController.PlayHurtExpression();
 
         public void NotifyEquipmentChanged()
