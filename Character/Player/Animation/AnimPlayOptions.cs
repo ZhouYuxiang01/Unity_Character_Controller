@@ -1,4 +1,3 @@
-// 文件路径: Characters/Player/Animation/AnimPlayOptions.cs
 namespace Characters.Player.Animation
 {
     /// <summary>
@@ -36,7 +35,6 @@ namespace Characters.Player.Animation
         /// </summary>
         public bool ForcePhaseSync;
 
-        // --- 快捷默认值 ---
         public static AnimPlayOptions Default => new AnimPlayOptions
         {
             Layer = 0,

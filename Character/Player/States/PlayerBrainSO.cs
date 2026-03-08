@@ -5,7 +5,7 @@ using Characters.Player.States;
 
 namespace Characters.Player.Data
 {
-    [CreateAssetMenu(fileName = "PlayerBrain_Default", menuName = "Player/Modules/Player Brain")]
+    [CreateAssetMenu(fileName = "PlayerBrain_Default", menuName = "BBBNexus/Player/Modules/Player Brain")]
     public class PlayerBrainSO : ScriptableObject
     {
         [Header("--- 1. ×´Ì¬×°ÔØÃûµ¥ (State Roster) ---")]

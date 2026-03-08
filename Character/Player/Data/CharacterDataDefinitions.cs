@@ -17,9 +17,9 @@ namespace Characters.Player.Data
     [System.Serializable]
     public enum MotionType
     {
-        InputDriven,   // Driven by input vector (loop) - 由输入向量控制（循环）
-        CurveDriven,   // Driven by baked curve (start, stop, etc) - 由烘焙曲线控制（启动、停止等）
-        Mixed          // Curve to input switch - 曲线到输入切换
+        InputDriven, 
+        CurveDriven,   
+        Mixed          
     }
 
     /// <summary>
@@ -27,11 +27,11 @@ namespace Characters.Player.Data
     /// </summary>
     public enum WarpedType
     {
-        None,           // Manual mode, respects user-defined points - 手动模式，使用用户配置的点
-        Vault,          // Auto-detects Y-axis peak (apex) - 自动探测Y轴极大值（顶点）
-        Dodge,          // Auto-detects XZ-plane max distance - 自动探测XZ平面最大位移点
-        Simple,         // Auto-generates a single end point at 1.0 - 仅生成1.0的终点
-        Custom          // Preserves user-defined points and bakes curves - 保留用户定义的特征点，仅烘焙曲线数据
+        None,           // 手动模式，使用用户配置的点
+        Vault,          // 自动探测Y轴极大值（顶点）
+        Dodge,          // 自动探测XZ平面最大位移点
+        Simple,         // 仅生成1.0的终点
+        Custom          // 保留用户定义的特征点，仅烘焙曲线数据
     }
 
     #endregion
@@ -78,21 +78,21 @@ namespace Characters.Player.Data
     [System.Serializable]
     public class WarpPointDef
     {
-        [Tooltip("Feature point name for identification - 特征点识别名称")]
+        [Tooltip("特征点识别名称")]
         public string PointName;
 
-        [Tooltip("Normalized time to trigger this point (0-1) - 触发该特征点的动画归一化时间 (0-1)")]
+        [Tooltip("触发该特征点的动画归一化时间 (0-1)")]
         [Range(0f, 1f)]
         public float NormalizedTime;
 
-        [Tooltip("Local offset applied to the runtime target at this point - 在此时刻，对运行时目标点施加的局部坐标偏移")]
+        [Tooltip("在此时刻，对运行时目标点施加的局部坐标偏移")]
         public Vector3 TargetPositionOffset;
 
         [Header("Baking Results - 烘焙结果")]
-        [Tooltip("[ReadOnly] Baked local offset from previous point to this moment - 从上个点到此时刻的烘焙局部位移")]
+        [Tooltip("从上个点到此时刻的烘焙局部位移")]
         public Vector3 BakedLocalOffset;
 
-        [Tooltip("[ReadOnly] Baked local rotation at this moment - 此时刻的烘焙局部旋转")]
+        [Tooltip("此时刻的烘焙局部旋转")]
         public Quaternion BakedLocalRotation = Quaternion.identity;
     }
 
@@ -103,24 +103,24 @@ namespace Characters.Player.Data
     [System.Serializable]
     public class WarpedMotionData
     {
-        [Header("Animation Source - 动画资源")]
+        [Header("动画资源")]
         public ClipTransition Clip;
 
-        [Header("Timing Control - 时序控制")]
+        [Header("时序控制")]
         public float EndTime = 0f;
         public FootPhase EndPhase = FootPhase.LeftFootDown;
 
-        [Header("Baking & Warping Config - 烘焙与扭曲配置")]
-        [Tooltip("Defines how the baker should auto-detect feature points - 定义烘焙器如何自动探测特征点")]
+        [Header("烘焙与扭曲配置")]
+        [Tooltip("定义烘焙器如何自动探测特征点")]
         public WarpedType Type = WarpedType.None;
 
-        [Tooltip("Warp points in time order - 空间对齐特征点序列，需按时间升序排列")]
+        [Tooltip(" 空间对齐特征点序列，需按时间升序排列")]
         public List<WarpPointDef> WarpPoints = new List<WarpPointDef>();
 
-        [Tooltip("IK weight curve during this motion - 动作期间手部 IK 的权重曲线")]
+        [Tooltip("动作期间手部 IK 的权重曲线")]
         public AnimationCurve HandIKWeightCurve = new AnimationCurve();
 
-        [Header("Baked Curves (ReadOnly) - 烘焙曲线（只读）")]
+        [Header("烘焙曲线（只读）")]
         public float BakedDuration;
         public AnimationCurve LocalVelocityX = new AnimationCurve();
         public AnimationCurve LocalVelocityY = new AnimationCurve();

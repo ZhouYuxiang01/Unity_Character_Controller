@@ -3,40 +3,38 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Core
 {
-    /// <summary>
-    /// 角色运动驱动器 (Motion Driver)
-    /// 
-    /// 核心职责：
-    /// 1. 解析玩家输入与动画曲线，计算最终的位移与旋转。
-    /// 2. 处理三种运动模式：输入驱动 (FreeLook/Aiming)、曲线驱动 (Curve/Mixed)、以及运动扭曲 (Motion Warping)。
-    /// 3. 管理重力与落地状态，并统一通过 CharacterController 执行移动。
-    /// </summary>
+    // 角色运动驱动器 负责解析黑板意图 并利用烘焙器数据执行物理位移 
     public class MotionDriver
     {
         #region Dependencies & References
 
+        // 宿主引用 
         private readonly PlayerController _player;
+        // 角色控制器 处理物理碰撞与斜坡交互 
         private readonly CharacterController _cc;
+        // 运行时黑板 存储所有动态状态与物理参数 
         private readonly PlayerRuntimeData _data;
+        // 离线配置注入 访问移动速率与重力系数 
         private readonly PlayerSO _config;
-        private readonly Transform _transform; // 缓存 Transform 提升性能
+        // 缓存变换组件 
+        private readonly Transform _transform;
 
         #endregion
 
         #region State Caches
 
-        // --- 模式切换缓存 ---
+        // 瞄准模式切换状态记录 
         private bool _wasAimingLastFrame;
 
-        // --- 平滑速度缓存 ---
+        // 平滑速度缓冲区 
         private float _currentSmoothSpeed;
         private float _smoothSpeedVelocity;
 
-        // --- Curve Driven (曲线驱动) 状态缓存 ---
+        // 曲线驱动模式偏航角增量缓存 
         private float _lastCurveDrivenAngle;
         private bool _isCurveAngleInitialized;
 
-        // --- Motion Warping (运动扭曲) 状态缓存 ---
+        // 运动扭曲系统运行时缓存 记录特征点目标与补偿速度 
         private WarpedMotionData _warpData;
         private Vector3[] _warpTargets;
         private int _currentWarpIndex;
@@ -44,14 +42,15 @@ namespace Characters.Player.Core
         private Vector3 _segmentStartPosition;
         private Vector3 _currentCompensationVel;
 
-        // --- Clip 类型缓存 ---
+        // 驱动模式记录 用于判定状态切换瞬间 
         private MotionType? _lastClipMotionType;
 
-        // Mixed 从 Curve -> Input 的当帧，只执行一次对齐/重置
+        // 混合模式对齐标记 
         private bool _didAlignOnMixedToInput;
 
         #endregion
 
+        // 构造驱动器 注入黑板引用与配置 
         public MotionDriver(PlayerController player)
         {
             _player = player;
@@ -65,27 +64,25 @@ namespace Characters.Player.Core
 
         #region Public API: Core Motion Updates
 
-        /// <summary>
-        /// 统一运动更新入口（包含动画剪辑数据）。
-        /// 根据 ClipData 的类型，自动选择输入驱动或曲线驱动。
-        /// </summary>
+        // 统一运动入口 自动协调黑板意图与烘焙好的物理曲线 
         public void UpdateMotion(MotionClipData clipData, float stateTime)
         {
+            // 处理瞄准模式切换瞬间的物理修正 
             HandleAimModeTransition();
 
-            // 自动处理曲线驱动缓存初始化/重置（避免依赖状态机在 Enter 调用）
+            // 自动检测并初始化曲线驱动所需的增量缓存 
             AutoHandleCurveDrivenEnter(clipData, stateTime);
 
+            // 根据数据配置选择输入驱动或曲线驱动 
             Vector3 horizontalVelocity = clipData == null
                 ? CalculateInputDrivenVelocity()
                 : CalculateClipDrivenVelocity(clipData, stateTime);
 
+            // 执行最终移动指令 
             ExecuteMovement(horizontalVelocity);
         }
 
-        /// <summary>
-        /// 纯输入驱动更新（无动画曲线干预）。
-        /// </summary>
+        // 纯输入驱动入口 适用于不含物理曲线的基础移动 
         public void UpdateLocomotionFromInput(float speedMult = 1f)
         {
             HandleAimModeTransition();
@@ -93,19 +90,13 @@ namespace Characters.Player.Core
             ExecuteMovement(horizontalVelocity);
         }
 
-        /// <summary>
-        /// 纯物理更新（例如在 Idle 状态下只应用重力）。
-        /// </summary>
+        // 物理怠机更新重载 仅应用重力与黑板属性 
         public void UpdateMotion()
         {
             ExecuteMovement(Vector3.zero);
         }
 
-        /// <summary>
-        /// 主动中断/重置与剪辑驱动相关的缓存。
-        /// 用途：当状态在 Clip 驱动中途被打断（例如 MoveStart -> Idle）时，
-        /// 防止下次再次进入 Clip 驱动时继承上一次的增量旋转缓存导致瞬间跳角度。
-        /// </summary>
+        // 强制重置增量旋转缓存 避免状态机切换导致瞬间跳变 
         public void InterruptClipDrivenMotion()
         {
             _lastClipMotionType = null;
@@ -117,20 +108,19 @@ namespace Characters.Player.Core
 
         #region Public API: Motion Warping
 
-        /// <summary>
-        /// 初始化 Motion Warping 数据（带目标点）。
-        /// </summary>
+        // 初始化运动扭曲系统 在烘焙数据基础上计算特征点物理补偿 
         public void InitializeWarpData(WarpedMotionData data, Vector3[] targets)
         {
             if (data == null || data.WarpPoints.Count == 0 || targets == null || targets.Length != data.WarpPoints.Count)
             {
-                Debug.LogError("[MotionDriver] Warp 数据初始化失败：参数为空或数量不匹配。");
+                Debug.LogError("运动扭曲数据初始化失败 参数不匹配");
                 return;
             }
 
             _warpData = data;
             _warpTargets = new Vector3[targets.Length];
 
+            // 将离线的目标点偏移转换为当前世界的对齐目标 
             for (int i = 0; i < targets.Length; i++)
             {
                 Vector3 worldOffset = _transform.TransformDirection(_warpData.WarpPoints[i].TargetPositionOffset);
@@ -141,17 +131,16 @@ namespace Characters.Player.Core
             _segmentStartTime = 0f;
             _segmentStartPosition = _transform.position;
 
+            // 计算首个特征点阶段的补偿速度 
             RecalculateWarpCompensation();
         }
 
-        /// <summary>
-        /// 初始化 Motion Warping 数据（仅基于烘焙局部位移）。
-        /// </summary>
+        // 基于离线烘焙局部位移初始化扭曲 适用于固定距离的预设动作 
         public void InitializeWarpData(WarpedMotionData data)
         {
             if (data?.WarpPoints == null || data.WarpPoints.Count == 0)
             {
-                Debug.LogError($"[MotionDriver] Warp 数据为空。Clip: {data?.Clip?.Name}");
+                Debug.LogError("运动扭曲数据为空 无法初始化");
                 return;
             }
 
@@ -164,21 +153,19 @@ namespace Characters.Player.Core
             InitializeWarpData(data, targets);
         }
 
-        /// <summary>
-        /// 执行主动的 Motion Warping 更新。
-        /// </summary>
-        /// <param name="normalizedTime">动画归一化时间 (0~1)</param>
+        // 驱动运动扭曲更新 精准对齐意图目标并叠加烘焙轨迹 
         public void UpdateWarpMotion(float normalizedTime)
         {
             if (_warpData == null) return;
 
-            // 同步平滑速度系统，防止 Warp 结束后切回正常移动时速度骤降
+            // 同步黑板速度 保证动作切换时的速度连贯性 
             _currentSmoothSpeed = new Vector3(_cc.velocity.x, 0f, _cc.velocity.z).magnitude;
             _smoothSpeedVelocity = 0f;
 
+            // 推进扭曲特征点分段 
             CheckAndAdvanceWarpSegment(normalizedTime);
 
-            // 1. 获取并转换基础局部速度
+            // 解析烘焙器生成的局部速度 转换为世界物理位移 
             Vector3 localVel = new Vector3(
                 _warpData.LocalVelocityX.Evaluate(normalizedTime),
                 _warpData.LocalVelocityY.Evaluate(normalizedTime),
@@ -186,30 +173,31 @@ namespace Characters.Player.Core
             );
             Vector3 baseWorldVel = _transform.TransformDirection(localVel);
 
-            // 2. 获取旋转并执行物理移动
+            // 合并基础速度与物理补偿速度 
             float rotVelY = _warpData.LocalRotationY.Evaluate(normalizedTime);
             Vector3 finalVelocity = baseWorldVel + _currentCompensationVel;
 
-            // 根据 WarpedMotionData 的开关决定是否叠加重力
             Vector3 gravityVelocity = Vector3.zero;
             if (_warpData.ApplyGravity)
             {
-                // CalculateGravity 会更新 VerticalVelocity / IsGrounded
+                // 离线数据若开启重力 则由物理引擎解算垂直位移 
                 gravityVelocity = CalculateGravity();
             }
             else
             {
-                // 保证 Grounded 标记是最新的，但不修改 VerticalVelocity
+                // 仅更新黑板的着地状态 保持数据同步 
                 _data.IsGrounded = _cc.isGrounded;
             }
 
             finalVelocity += gravityVelocity;
 
+            // 驱动底层控制器并同步偏航旋转 
             _cc.Move(finalVelocity * Time.deltaTime);
             _transform.Rotate(0f, rotVelY * Time.deltaTime, 0f, Space.World);
             _data.CurrentSpeed = _cc.velocity.magnitude;
         }
 
+        // 清理扭曲缓存 释放物理资源 
         public void ClearWarpData()
         {
             _warpData = null;
@@ -221,9 +209,7 @@ namespace Characters.Player.Core
 
         #region Internal Logic: Velocity Calculation
 
-        /// <summary>
-        /// 统合物理执行：合并水平速度与重力。
-        /// </summary>
+        // 统一物理执行 合并水平速度与重力 最终写入黑板状态 
         private void ExecuteMovement(Vector3 horizontalVelocity)
         {
             Vector3 verticalVelocity = CalculateGravity();
@@ -231,6 +217,7 @@ namespace Characters.Player.Core
             _data.CurrentSpeed = _cc.velocity.magnitude;
         }
 
+        // 决定使用纯曲线数据还是混合输入逻辑 
         private Vector3 CalculateClipDrivenVelocity(MotionClipData clipData, float stateTime)
         {
             if (clipData.Type == MotionType.CurveDriven)
@@ -238,6 +225,7 @@ namespace Characters.Player.Core
 
             if (clipData.Type == MotionType.Mixed)
             {
+                // 混合模式 在旋转结束前由曲线主导 结束后移交意图管线 
                 bool isCurvePhase = stateTime < clipData.RotationFinishedTime;
 
                 if (isCurvePhase)
@@ -246,7 +234,7 @@ namespace Characters.Player.Core
                     return CalculateCurveVelocity(clipData, stateTime);
                 }
 
-                // Mixed 切换到 Input 的当帧：做一次性对齐/重置，避免 SmoothDamp 的 RotationVelocity 残留导致抽搐。
+                // 移交管线瞬间执行对齐 消除旋转惯性引发的跳变 
                 if (!_didAlignOnMixedToInput)
                 {
                     AlignAndResetForInputTransition();
@@ -259,6 +247,7 @@ namespace Characters.Player.Core
             return CalculateInputDrivenVelocity();
         }
 
+        // 输入驱动速度计算 根据黑板瞄准标记选择计算逻辑 
         private Vector3 CalculateInputDrivenVelocity(float speedMult = 1f)
         {
             return _data.IsAiming
@@ -270,9 +259,7 @@ namespace Characters.Player.Core
 
         #region Internal Logic: Specific Movement Modes
 
-        /// <summary>
-        /// 探索模式：角色朝向实际移动方向，相对于相机权威系。
-        /// </summary>
+        // 探索模式 角色朝向意图移动方向 基于相机权威系计算 
         private Vector3 CalculateFreeLookVelocity(float speedMult)
         {
             Vector3 moveDir = _data.DesiredWorldMoveDir;
@@ -283,19 +270,17 @@ namespace Characters.Player.Core
                 return Vector3.zero;
             }
 
-            // 平滑旋转至移动方向
+            // 平滑旋转至移动方向 访问离线配置的平滑时间 
             float targetYaw = Mathf.Atan2(moveDir.x, moveDir.z) * Mathf.Rad2Deg;
-            ApplySmoothRotation(targetYaw, _config.Core. RotationSmoothTime);
+            ApplySmoothRotation(targetYaw, _config.Core.RotationSmoothTime);
 
             return CalculateSmoothedVelocity(moveDir, false, speedMult);
         }
 
-        /// <summary>
-        /// 瞄准模式：角色朝向相机权威系 (Strafing)，根据角色局部坐标移动。
-        /// </summary>
+        // 瞄准模式 角色朝向相机权威系 采用平移运动逻辑 
         private Vector3 CalculateAimVelocity(float speedMult)
         {
-            // 平滑旋转至相机朝向
+            // 强行平滑对齐相机偏航角 
             ApplySmoothRotation(_data.AuthorityYaw, _config.Aiming.AimRotationSmoothTime);
 
             Vector2 input = _data.MoveInput;
@@ -305,7 +290,7 @@ namespace Characters.Player.Core
                 return Vector3.zero;
             }
 
-            // 基于角色当前朝向计算本地移动向量
+            // 在角色局部空间内合成移动矢量 
             Vector3 forward = _transform.forward.SetY(0).normalized;
             Vector3 right = _transform.right.SetY(0).normalized;
             Vector3 moveDir = (right * input.x + forward * input.y).normalized;
@@ -313,14 +298,11 @@ namespace Characters.Player.Core
             return CalculateSmoothedVelocity(moveDir, true, speedMult);
         }
 
-        /// <summary>
-        /// 曲线驱动模式：由动画曲线完全接管角色的旋转与位移。
-        /// </summary>
+        // 曲线驱动逻辑 解析烘焙器物理曲线并执行增量旋转 
         private Vector3 CalculateCurveVelocity(MotionClipData data, float time)
         {
-            // --- 1. 旋转计算 (增量法) ---
+            // 采样离线旋转曲线 计算当帧偏航增量 
             float curveAngle = data.RotationCurve.Evaluate(time * data.PlaybackSpeed);
-            // Debug.Log(curveAngle);
 
             if (!_isCurveAngleInitialized)
             {
@@ -337,11 +319,10 @@ namespace Characters.Player.Core
             }
             _data.CurrentYaw = _transform.eulerAngles.y;
 
-            // --- 2. 位移计算 ---
+            // 采样离线速度曲线 根据烘焙好的本地方向执行位移 
             float speed = data.SpeedCurve.Evaluate(time * data.PlaybackSpeed);
             Vector3 localDir = data.TargetLocalDirection;
 
-            // 如果动画自带强制局部方向（如后侧闪避），则以此方向移动
             if (localDir.sqrMagnitude > 0.0001f)
             {
                 Vector3 worldDir = _transform.TransformDirection(localDir.SetY(0)).normalized;
@@ -355,9 +336,7 @@ namespace Characters.Player.Core
 
         #region Internal Helpers
 
-        /// <summary>
-        /// 应用平滑旋转并更新数据缓存。
-        /// </summary>
+        // 执行平滑旋转 结果实时反馈至黑板 
         private void ApplySmoothRotation(float targetYaw, float smoothTime)
         {
             float smoothedYaw = Mathf.SmoothDampAngle(_transform.eulerAngles.y, targetYaw, ref _data.RotationVelocity, smoothTime);
@@ -365,18 +344,17 @@ namespace Characters.Player.Core
             _data.CurrentYaw = smoothedYaw;
         }
 
-        /// <summary>
-        /// 获取当前状态的基础速度并应用平滑和空中惩罚。
-        /// </summary>
+        // 获取当前状态速度上限并应用平滑过渡 包含空中控制惩罚 
         private Vector3 CalculateSmoothedVelocity(Vector3 moveDir, bool isAiming, float speedMult)
         {
             float baseSpeed = GetBaseSpeed(_data.CurrentLocomotionState, isAiming);
-            if (!_data.IsGrounded) baseSpeed *= _config.Core. AirControl;
+            if (!_data.IsGrounded) baseSpeed *= _config.Core.AirControl;
 
             _currentSmoothSpeed = Mathf.SmoothDamp(_currentSmoothSpeed, baseSpeed * speedMult, ref _smoothSpeedVelocity, _config.Core.MoveSpeedSmoothTime);
             return moveDir * _currentSmoothSpeed;
         }
 
+        // 从离线配置注入中 检索当前运动状态对应的物理速率 
         private float GetBaseSpeed(LocomotionState state, bool isAiming)
         {
             return state switch
@@ -388,11 +366,11 @@ namespace Characters.Player.Core
             };
         }
 
+        // 物理重力解算 处理落地反弹力并更新垂直速度 
         private Vector3 CalculateGravity()
         {
             _data.IsGrounded = _cc.isGrounded;
 
-            // 落地时施加一个微小的持续向下的力，防止在斜坡上弹跳
             _data.VerticalVelocity = (_data.IsGrounded && _data.VerticalVelocity < 0)
                 ? _config.Core.ReboundForce
                 : _data.VerticalVelocity + _config.Core.Gravity * Time.deltaTime;
@@ -400,26 +378,23 @@ namespace Characters.Player.Core
             return new Vector3(0f, _data.VerticalVelocity, 0f);
         }
 
+        // 瞄准状态切换时重置旋转惯性 防止镜头超调 
         private void HandleAimModeTransition()
         {
             if (_data.IsAiming == _wasAimingLastFrame) return;
 
-            // 模式切换时清空旋转速度惯性，防止转身越界
             _data.RotationVelocity = 0f;
             _wasAimingLastFrame = _data.IsAiming;
         }
 
+        // 停止移动时重置黑板缓存 
         private void ResetMovementCaches()
         {
             _data.CurrentYaw = _transform.eulerAngles.y;
             _currentSmoothSpeed = 0f;
         }
 
-        /// <summary>
-        /// 自动检测并处理进入曲线驱动的瞬间：
-        /// - 从 Input->Curve/Mixed（curve 阶段）时重置增量缓存
-        /// - 同时清空 RotationVelocity，避免上一状态的 SmoothDamp 惯性影响曲线驱动第一帧
-        /// </summary>
+        // 进入曲线驱动瞬间执行自动重置 清除上一状态残留的旋转速度 
         private void AutoHandleCurveDrivenEnter(MotionClipData clipData, float stateTime)
         {
             MotionType? current = clipData?.Type;
@@ -430,39 +405,27 @@ namespace Characters.Player.Core
             bool isInCurveLogicThisFrame = isCurveDriven || isMixedCurvePhase;
             bool wasInCurveLogicLastFrame = _lastClipMotionType == MotionType.CurveDriven || _lastClipMotionType == MotionType.Mixed;
 
-            // 进入曲线驱动的第一帧（从 null / InputDriven / mixed(input阶段) 进入到 curve 逻辑）
             if (isInCurveLogicThisFrame && (!wasInCurveLogicLastFrame || !_isCurveAngleInitialized))
             {
                 ResetCurveDrivenState();
-
-                // 清空 SmoothDampAngle 的惯性，避免曲线驱动第一帧被残留速度影响
                 _data.RotationVelocity = 0f;
-
                 _didAlignOnMixedToInput = false;
             }
 
             _lastClipMotionType = current;
         }
 
-        // 曲线驱动增量旋转的缓存重置：由 MotionDriver 内部自动调用
         private void ResetCurveDrivenState()
         {
             _isCurveAngleInitialized = false;
             _lastCurveDrivenAngle = 0f;
         }
 
-        /// <summary>
-        /// Mixed 从 Curve -> Input 的当帧对齐：
-        /// - 清空 RotationVelocity，避免 SmoothDampAngle 继承曲线阶段之前的惯性
-        /// - 同步 CurrentYaw
-        /// - 可选：重置曲线增量缓存，避免后续再次进入 curve 时污染
-        /// </summary>
+        // 从曲线驱动平滑切回意图驱动 执行物理对齐 
         private void AlignAndResetForInputTransition()
         {
             _data.RotationVelocity = 0f;
             _data.CurrentYaw = _transform.eulerAngles.y;
-
-            // 进入 input 后曲线增量缓存不再使用，但清掉更安全
             _isCurveAngleInitialized = false;
         }
 
@@ -470,6 +433,7 @@ namespace Characters.Player.Core
 
         #region Motion Warping Helpers
 
+        // 检查并推进运动扭曲的特征点分段 
         private void CheckAndAdvanceWarpSegment(float normalizedTime)
         {
             if (_currentWarpIndex >= _warpData.WarpPoints.Count) return;
@@ -484,6 +448,7 @@ namespace Characters.Player.Core
             }
         }
 
+        // 重新计算当前分段的物理补偿速度 确保对齐意图目标 
         private void RecalculateWarpCompensation()
         {
             if (_currentWarpIndex >= _warpData.WarpPoints.Count)
@@ -510,10 +475,7 @@ namespace Characters.Player.Core
         #endregion
     }
 
-    /// <summary>
-    /// 扩展方法类：用于简化 Vector3 的操作，提升代码可读性
-    /// 可以放在单独的文件中，或者放在同一个命名空间下。
-    /// </summary>
+    // 向量操作扩展工具  
     public static class Vector3Extensions
     {
         public static Vector3 SetY(this Vector3 vector, float y)

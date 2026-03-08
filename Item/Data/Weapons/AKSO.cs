@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Items.Data.Weapons;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "New AKSO", menuName = "BBBNexus/Items/Weapons/AKSO")]
+[CreateAssetMenu(fileName = "New AKSO", menuName = "BBBNexus/Items/Weapons/AK")]
 public class AKSO : RangedWeaponSO
 {
     [Header("--- AK专属动画参数 ---")]

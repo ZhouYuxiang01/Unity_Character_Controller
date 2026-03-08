@@ -1,58 +1,74 @@
 ﻿using Characters.Player;
 using Items.Core;
-using Items.Data; // 确保这里引用了你的配置层命名空间
+using Items.Data;
 using UnityEngine;
 
 namespace Items.Logic.Weapons
 {
-    /// <summary>
-    /// AK46 实体行为控制脚本
-    /// 挂载在 AK46 的 Prefab 根节点。接管自身的输入判断、IK管控与开火表现。
-    /// </summary>
+    // 步枪 AK47 的行为脚本 完整的射击逻辑与 IK 管理 
+    // 负责装备 瞄准 开火 IK 延时启用 后坐力等全面流程 
+    // 简单的逻辑说明:
+    //  1) 装备时有硬直 期间禁止开火 
+    //  2) 瞄准时激活枪口指向 IK 与头部查看 IK 
+    //  3) 只有瞄准状态才能开火 
+    //  4) 开火时生成特效 音效 投射物 
+    //  5) 后坐力通过修改视角参数 而不是旋转 确保被权威系统整合 
+    // 仅作为一个简单的演示物品行为的示例 真实项目中可以根据需要进行扩展和优化
     public class AK46Behaviour : MonoBehaviour, IHoldableItem
     {
+        // UI 分区标记 方便编辑器检查配置 
+
         [Header("--- 表现与挂点 (Visual & IK) ---")]
+        // 左手抓枪的目标位置 通常在枪管附近 
         [Tooltip("左手应该握在哪里？(将枪管上的空物体拖入)")]
         [SerializeField] private Transform _leftHandGoal;
 
+        // 枪口火焰粒子特效 开火时播放 
         [Tooltip("枪口火焰特效")]
         [SerializeField] private ParticleSystem _muzzleFlash;
 
+        // 枪口投射点与指向基准 用作 AimIK 的目标 让瞄准指向枪口而非头部 
         [Tooltip("枪口 / 瞄准参考点 (用作 AimIK 的目标)")]
         [SerializeField] private Transform _muzzle;
 
-        // --- 运行时的宿主与灵魂 ---
+        // 宿主控制器 访问动画系统 运行时状态 输入等 
         private PlayerController _player;
-        private ItemInstance _instance;     // 纯逻辑实例 (记录真实的弹药、耐久等)
+        // 该枪的实例数据 包含弹药 耐久等运行时属性 
+        private ItemInstance _instance;
+        // 离线配置 包含所有动画参数 开火冷却 后坐力等 
         private AKSO _akconfig;
-        private float _fireRate = 0.1f;   // 默认射速 (最好从 _mySoul.BaseData 强转配置后读取)
+        // 射速 从配置中读取或用默认值 
+        private float _fireRate = 0.1f;
 
-        // --- 内部微型状态机 ---
+        // 装备状态标志 
         private bool _isEquipping;
+        // 装备动画结束时间 超过此时间才能开火 
         private float _equipEndTime;
+        // 上一次开火的时间戳 用于冷却控制 
         private float _lastFireTime;
 
-        // 记录上帧瞄准状态以便检测切换
+        // 上一帧的瞄准状态 用于检测瞄准模式切换 
         private bool _wasAiming;
 
-        // IK 调度
+        // IK 延时启用调度 
         private bool _ikEnableScheduled;
         private float _ikEnableTimePoint;
+        // IK 延时关闭调度 
         private bool _ikDisableScheduled;
         private float _ikDisableTimePoint;
+        // IK 当前是否激活 
         private bool _ikActive;
 
-        // ==========================================
-        // 1. 灵魂注入 (Driver 生成模型后，同一帧立刻被调用)
-        // ==========================================
+        // 灵魂注入 枪械获得实例与配置 
         public void Initialize(ItemInstance instanceData)
         {
             _instance = instanceData;
+            // 强转为步枪配置 
             _akconfig = _instance.BaseData as AKSO;
 
+            // 读取射速 优先使用显式间隔 否则使用配置的射速率 
             if (_akconfig != null)
             {
-                // Prefer explicit ShootInterval if set (> 0), otherwise fallback to base FireRate
                 float interval = _akconfig.ShootInterval > 0f ? _akconfig.ShootInterval : _akconfig.FireRate;
                 _fireRate = Mathf.Max(0.001f, interval);
             }
@@ -60,20 +76,20 @@ namespace Items.Logic.Weapons
             Debug.Log($"<color=#00FF00>[AK46]</color> 灵魂注入成功！当前物品名: {_instance.BaseData.DisplayName}");
         }
 
-        // ==========================================
-        // 2. 状态机赋权：拔枪出场！
-        // ==========================================
+        // 装备入场 开始拔枪流程 设置 IK 目标 
         public void OnEquipEnter(PlayerController player)
         {
             _player = player;
+            // 开始装备硬直 期间禁止开火 
             _isEquipping = true;
 
-            // 设置 LeftHandGoal 但延迟启用 IK 到配置时间点
+            // 设置左手 IK 目标但延迟启用 确保拔枪动画完成后再接上 IK 
             if (_leftHandGoal != null && _player != null && _player.RuntimeData != null)
             {
                 _player.RuntimeData.LeftHandGoal = _leftHandGoal;
-                _player.RuntimeData.WantsLeftHandIK = false; // 先不立即打开，由调度控制
+                _player.RuntimeData.WantsLeftHandIK = false;
 
+                // 如果配置了延迟时间则安排延迟启用 
                 if (_akconfig != null)
                 {
                     _ikEnableScheduled = true;
@@ -81,7 +97,7 @@ namespace Items.Logic.Weapons
                 }
                 else
                 {
-                    // 如果没有配置，立即启用以保持兼容
+                    // 没配置则立即启用 
                     _player.RuntimeData.WantsLeftHandIK = true;
                     _ikActive = true;
                 }
@@ -89,11 +105,11 @@ namespace Items.Logic.Weapons
                 Debug.Log($"<color=#00FF00>[AK46]</color> 左手 IK 目标已设置，计划在 {_ikEnableTimePoint - Time.time:0.00}s 后开启（若配置）。");
             }
 
-            // 处理拔枪硬直
+            // 装备动画的时长 在此期间禁止开火 
             float equipAnimDuration = _akconfig.EquipEndTime;
             _equipEndTime = Time.time + equipAnimDuration;
 
-            // 播放拔枪动画（若存在）
+            // 播放拔枪动画 
             if (_akconfig != null && _akconfig.EquipAnim != null && _player != null)
             {
                 _player.AnimFacade.PlayTransition(_akconfig.EquipAnim, _akconfig.EquipAnimPlayOptions);
@@ -102,24 +118,22 @@ namespace Items.Logic.Weapons
             Debug.Log($"<color=#FFFF00>[AK46]</color> 正在拔枪... {equipAnimDuration} 秒内禁止开火。");
         }
 
-        // ==========================================
-        // 3. 武器的主舞台：状态机每帧无脑转发
-        // ==========================================
+        // 逻辑更新 每帧处理 IK 调度 瞄准切换 开火输入 
         public void OnUpdateLogic()
         {
-            // --- IK 调度 ---
+            // IK 延时启用检查 
             if (_ikEnableScheduled && Time.time >= _ikEnableTimePoint)
             {
-                // Avoid enabling left-hand IK while still in equip hardening.
+                // 如果仍在装备则延迟到装备完成 
                 if (_isEquipping)
                 {
-                    // Postpone enable until equip hardening ends
                     _ikEnableTimePoint = _equipEndTime + 0.001f;
                 }
                 else
                 {
+                    // 装备完成 启用 IK 
                     _ikEnableScheduled = false;
-                    // 仅在该武器仍为当前装备时启用 IK
+                    // 仅当该枪仍为当前装备时启用 IK 避免已切枪的枪仍在作用 IK 
                     if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == _instance)
                     {
                         _player.RuntimeData.WantsLeftHandIK = true;
@@ -129,13 +143,15 @@ namespace Items.Logic.Weapons
                 }
             }
 
+            // IK 延时关闭检查 
             if (_ikDisableScheduled && Time.time >= _ikDisableTimePoint)
             {
                 _ikDisableScheduled = false;
-                // 只有在该武器仍应当关闭 IK 时才关闭（避免影响新武器）
+                // 只有当该枪应该关闭 IK 时才关闭 避免影响新装备的 IK 
                 if (_player != null && _player.RuntimeData != null)
                 {
                     var current = _player.RuntimeData.CurrentItem;
+                    // 检查是否仍是该枪或已经卸载 
                     if (current == null || current.InstanceID == _instance.InstanceID)
                     {
                         _player.RuntimeData.WantsLeftHandIK = false;
@@ -150,15 +166,16 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            // --- 阶段 A：硬直拦截 ---
+            // 装备硬直阶段 禁止一切操作 
             if (_isEquipping)
             {
                 if (Time.time >= _equipEndTime)
                 {
-                    _isEquipping = false; // 硬直结束！
+                    // 硬直结束 转入待机 
+                    _isEquipping = false;
                     Debug.Log("<color=#00FF00>[AK46]</color> 拔枪完毕！进入战备状态。");
 
-                    // 拔枪完毕后进入 EquipIdleAnim（如果配置了的话）
+                    // 播放装备后的待机动画 如果有配置的话 
                     if (_akconfig != null && _akconfig.EquipIdleAnim != null && _player != null)
                     {
                         _player.AnimFacade.PlayTransition(_akconfig.EquipIdleAnim, _akconfig.EquipIdleAnimOptions);
@@ -166,76 +183,79 @@ namespace Items.Logic.Weapons
                 }
                 else
                 {
-                    return; // 依然在拔枪中，直接 return，不响应任何玩家输入！
+                    // 依然在装备 直接返回 不响应任何输入 
+                    return;
                 }
             }
 
-            // --- 阶段 B：业务逻辑执行 ---
+            // 业务逻辑执行阶段 
 
-            // 获取瞄准状态
+            // 检查当前是否处于瞄准状态 
             bool isAiming = _player != null && _player.RuntimeData != null && _player.RuntimeData.IsAiming;
 
-            // 如果瞄准状态发生切换，则切换动画
+            // 瞄准状态发生切换时 切换相应的动画与 IK 配置 
             if (!_isEquipping && _wasAiming != isAiming)
             {
                 if (isAiming)
                 {
-                    // 进入瞄准，播放瞄准动画，并把 muzzle 写入 CurrentAimReference 作为 AimIK 的基准点
+                    // 进入瞄准状态 播放瞄准动画 
                     if (_akconfig != null && _akconfig.AimAnim != null && _player != null)
                     {
                         _player.AnimFacade.PlayTransition(_akconfig.AimAnim, _akconfig.AnimPlayOptions);
                     }
 
+                    // 设置枪口为 AimIK 的基准点 这样瞄准指向会以枪口为中心 而不是头部 
                     if (_player != null && _player.RuntimeData != null && _muzzle != null)
                     {
-                        // 将枪口设置为 AimIK 的基准点（让 AimIK 以枪口为中心指向准星）
                         _player.RuntimeData.CurrentAimReference = _muzzle;
-                        // 打开头部指向 IK（让头部看向摄像机计算的准星点）
+                        // 启用头部指向 IK 让头部看向准星 
                         _player.RuntimeData.WantsLookAtIK = true;
                     }
                 }
                 else
                 {
-                    // 退出瞄准，回到 EquipIdleAnim（如果存在），并清除 AimReference
+                    // 退出瞄准状态 回到待机动画 
                     if (_akconfig != null && _akconfig.EquipIdleAnim != null && _player != null)
                     {
                         _player.AnimFacade.PlayTransition(_akconfig.EquipIdleAnim, _akconfig.EquipIdleAnimOptions);
                     }
 
+                    // 清除瞄准相关的 IK 配置 
                     if (_player != null && _player.RuntimeData != null)
                     {
-                        // 清除 AimIK 基准点
+                        // 仅当枪口仍是 AimReference 时才清除 避免清除其他来源的配置 
                         if (_player.RuntimeData.CurrentAimReference == _muzzle)
                             _player.RuntimeData.CurrentAimReference = null;
 
-                        // 关闭头部指向 IK
+                        // 关闭头部指向 IK 
                         _player.RuntimeData.WantsLookAtIK = false;
                     }
                 }
 
+                // 同步瞄准状态标志 
                 _wasAiming = isAiming;
             }
 
-            // 开火输入
-            bool isFiring = _player != null && _player.InputReader != null && _player.InputReader.FireInput;
+            // 检测射击按键 
+            bool isFiring = _player != null && _player.InputReader != null && _player.InputReader.Current.FireHeld;
 
-            // 只有在瞄准时可以开火
+            // 仅在瞄准时才允许开火 确保瞄准的必要性 
             if (isAiming && isFiring)
             {
                 TryFire();
             }
         }
 
-        // ==========================================
-        // 4. 被迫下线：切枪、受击或翻滚被打断
-        // ==========================================
+        // 强制卸载 通常由状态机或装备管理器在切枪 翻滚等情况下调用 
         public void OnForceUnequip()
         {
-            _isEquipping = false; // 强行重置状态
+            // 强制重置装备状态 
+            _isEquipping = false;
 
+            // 停止火焰特效 
             if (_muzzleFlash != null) _muzzleFlash.Stop();
 
-            // 不要立即关闭 IK，而是根据配置延迟关闭，以配合收枪动画
+            // 根据配置延迟关闭 IK 以配合收枪动画 
             if (_akconfig != null)
             {
                 _ikDisableScheduled = true;
@@ -245,7 +265,7 @@ namespace Items.Logic.Weapons
             }
             else
             {
-                // 未配置则立即关闭
+                // 没配置则立即关闭 
                 if (_player != null && _player.RuntimeData != null)
                 {
                     _player.RuntimeData.WantsLeftHandIK = false;
@@ -254,7 +274,7 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            // 清理瞄准相关的 IK
+            // 清理瞄准相关的 IK 
             if (_player != null && _player.RuntimeData != null)
             {
                 if (_player.RuntimeData.CurrentAimReference == _muzzle)
@@ -263,7 +283,7 @@ namespace Items.Logic.Weapons
                 _player.RuntimeData.WantsLookAtIK = false;
             }
 
-            // 播放收起动画（仅当当前物品已经为 null 时）
+            // 播放收起动画 仅当当前装备已设为 null 时 
             if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == null)
             {
                 if (_akconfig != null && _akconfig.UnEquipAnim != null)
@@ -275,55 +295,53 @@ namespace Items.Logic.Weapons
             Debug.Log($"<color=#FF0000>[AK46]</color> 已发起收枪流程，等待延时关闭 IK（若配置）。");
         }
 
-        // ==========================================
-        // 私有方法：开火判定
-        // ==========================================
+        // 尝试开火 检查冷却与弹药 生成特效与投射物 
         private void TryFire()
         {
-            // 1. 射速校验
+            // 射速冷却检查 未到冷却时间则不开火 
             if (Time.time - _lastFireTime < _fireRate) return;
 
-            // 2. 弹药校验 (假设你在 _mySoul 里存了弹药数量，比如用字典或者扩展字段)
-            // 如果你扩展了 ItemInstance，这里应该是： if (_mySoul.CurrentAmmo <= 0) return;
-            // 为了演示框架跑通，我们这里暂时只打日志
+            // 弹药检查 如果扩展了 ItemInstance 可以在这里检查弹药数量 
+            // 暂时跳过 假设弹药充足 
 
-            // 3. 真正开火
+            // 真正开火 更新上一次开火时间 
             _lastFireTime = Time.time;
 
+            // 播放枪口火焰特效 
             if (_muzzleFlash != null) _muzzleFlash.Play();
 
-            // Play shooting sound if configured
+            // 播放射击音效 
             if (_akconfig != null && _akconfig.ShootSound != null && _muzzle != null)
             {
                 AudioSource.PlayClipAtPoint(_akconfig.ShootSound, _muzzle.position);
             }
 
-            // Spawn muzzle VFX if configured
+            // 生成枪口 VFX 特效 
             if (_akconfig != null && _akconfig.MuzzleVFXPrefab != null && _muzzle != null)
             {
                 var muzzleVFX = Object.Instantiate(_akconfig.MuzzleVFXPrefab, _muzzle.position, _muzzle.rotation);
-                // 保持特效在 muzzle 位置作为子物体
+                // 让特效跟随枪口 
                 muzzleVFX.transform.parent = _muzzle;
             }
 
-            // 应用后坐力效果
+            // 应用后坐力 修改视角使其自然晃动 
             ApplyRecoil();
 
-            // Spawn projectile if configured
+            // 生成投射物 
             if (_akconfig != null && _akconfig.ProjectilePrefab != null && _muzzle != null)
             {
                 var proj = Object.Instantiate(_akconfig.ProjectilePrefab, _muzzle.position, _muzzle.rotation);
-                // Ensure it exists in world root (not parented to the weapon)
+                // 投射物不应该成为枪的子物体 应该独立存在于世界 
                 proj.transform.parent = null;
 
+                // 设置投射物的初始速度 
                 var rb = proj.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
-                    // Set initial velocity directly for consistent behavior
                     rb.velocity = _muzzle.forward * _akconfig.ProjectileSpeed;
                 }
 
-                // If the projectile has a SimpleProjectile component, assign hit sound from AKSO
+                // 如果投射物有简单投射脚本 注入碰撞音效配置 
                 var simple = proj.GetComponent<SimpleProjectile>();
                 if (simple != null)
                 {
@@ -331,35 +349,30 @@ namespace Items.Logic.Weapons
                 }
             }
 
-            // 如果有后坐力动画、屏幕震动等，全在这里调用
-
             Debug.Log($"<color=#FF8800>[AK46]</color> 砰！检测到瞄准状态，成功开火！");
         }
 
-        /// <summary>
-        /// 应用后坐力效果：修改视角参数（ViewYaw/ViewPitch）而不是权威旋转
-        /// 这样后坐力会被 ViewRotationProcessor 纳入最终的权威旋转计算，不会被下一帧重置
-        /// </summary>
+        // 应用后坐力效果 通过修改视角参数而不是旋转确保被权威系统整合 
+        // 这样后坐力会被 ViewRotationProcessor 纳入最终的权威旋转 不会被下一帧重置 
         private void ApplyRecoil()
         {
             if (_player == null || _player.RuntimeData == null || _akconfig == null) return;
 
-            // 计算随机化的俯仰与偏航
+            // 计算随机化的俯仰与偏航 增加射击的"手感" 
             float pitchNoise = Random.Range(-_akconfig.RecoilPitchRandomRange, _akconfig.RecoilPitchRandomRange);
             float yawNoise = Random.Range(-_akconfig.RecoilYawRandomRange, _akconfig.RecoilYawRandomRange);
 
             float finalPitch = _akconfig.RecoilPitchAngle + pitchNoise;
             float finalYaw = _akconfig.RecoilYawAngle + yawNoise;
 
-            // 直接修改 ViewPitch 和 ViewYaw（而不是 AuthorityRotation）
-            // 这样后坐力会被纳入权威参考系，下一帧 ViewRotationProcessor 会基于这些值计算权威旋转
-            // 后坐力的偏航方向随机
+            // 修改视角参数而不是权威旋转 这样后坐力会被纳入权威参考系计算 
+            // 俯仰减小使视角向上晃 
+            _player.RuntimeData.ViewPitch -= finalPitch;
+            // 偏航左右随机 
             float yawSign = Random.value > 0.5f ? 1f : -1f;
-            
-            _player.RuntimeData.ViewPitch -= finalPitch;  // 负值使视角向上
-            _player.RuntimeData.ViewYaw += yawSign * finalYaw;  // 左右偏航
+            _player.RuntimeData.ViewYaw += yawSign * finalYaw;
 
-            // 应用俯仰限制（保持与 ViewRotationProcessor 的逻辑一致）
+            // 应用俯仰限制 确保视角不会超出配置的范围 
             _player.RuntimeData.ViewPitch = Mathf.Clamp(
                 _player.RuntimeData.ViewPitch,
                 _player.Config.Core.PitchLimits.x,

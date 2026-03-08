@@ -4,6 +4,9 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Expression
 {
+    // IK 结算控制器
+    // 负责处理左手/右手的 IK 权重 平滑追踪 Aim IK 与 Warp IK 的拦截逻辑
+    // 它从运行时黑板读取意图并将目标与权重下发到 IPlayerIKSource
     public class IKController
     {
         private PlayerController _player;
@@ -35,6 +38,8 @@ namespace Characters.Player.Expression
             _lookAtPositionSmoothTime = _config.Aiming.AimIkChaseSmoothTime;
         }
 
+        // 每帧调用一次，由 PlayerController 在主循环中更新
+        // 优先级从高到低：Warp IK 拦截 -> Aim 基准点更新 -> 左手 IK -> 右手 IK -> 头部注视
         public void Update()
         {
             if (_ikSource == null) return;

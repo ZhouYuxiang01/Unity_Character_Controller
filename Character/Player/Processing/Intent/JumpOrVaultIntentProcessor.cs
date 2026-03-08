@@ -3,41 +3,34 @@ using UnityEngine;
 
 namespace Characters.Player.Processing
 {
+    // 跳跃与翻越意图处理器 它是高段移动的决策中枢 
+    // 负责检测翻越障碍物 仲裁跳跃 翻越 二段跳的优先级 
     public class JumpOrVaultIntentProcessor
     {
         private PlayerController _player;
         private PlayerSO _config;
         private LayerMask _obstacleMask;
 
-        // --- Debug 缓存变量 ---
+        // 缓存有效的翻越信息 使得按键时能快速获取最新的障碍物数据 
         private VaultObstacleInfo _lastValidLowVaultInfo;
         private float _lastValidLowVaultTime;
         private VaultObstacleInfo _lastValidHighVaultInfo;
         private float _lastValidHighVaultTime;
 
-        // 可在 PlayerSO 中配置，这里硬编码为 2 秒，方便您观察
-        private float _debugHoldDuration = 2.0f;
-
         public JumpOrVaultIntentProcessor(PlayerController player)
         {
             _player = player;
             _config = player.Config;
-            _obstacleMask = _config.Vaulting. ObstacleLayers;
-
-            // 订阅跳跃按键按下事件
-            _player.InputReader.OnJumpPressed += OnJumpPressed;
+            _obstacleMask = _config.Vaulting.ObstacleLayers;
         }
 
-
-        /// <summary>
-        /// Update 负责每帧的环境扫描（用于 Debug 绘制）和清理残留意图
-        /// </summary>
+        // 每帧的环境扫描与输入检测 
+        // 即使不按键也要持续扫描周围障碍 为按键时提供最新数据 
         public void Update()
         {
             var data = _player.RuntimeData;
 
-            // --- 1. 实时扫描环境并更新 Debug 缓存 (即使不按键) ---
-            // 只有在地面上才去扫描墙壁，节省性能
+            // 实时扫描环境并更新缓存 但只在地面上进行以节省性能
             if (data.IsGrounded)
             {
                 // 尝试扫描低墙
@@ -55,15 +48,22 @@ namespace Characters.Player.Processing
                 }
             }
 
+            // 直接读取输入状态并检测跳跃按下 
+            if (_player.InputReader != null)
+            {
+                var inputFrame = _player.InputReader.Current;
+                if (inputFrame.JumpPressed)
+                {
+                    HandleJumpIntent(data);
+                    _player.InputReader.ConsumeJump();
+                }
+            }
         }
 
-        /// <summary>
-        /// 跳跃键按下回调：仲裁意图
-        /// </summary>
-        private void OnJumpPressed()
+        // 跳跃意图处理 仲裁是否跳跃 翻越或二段跳 
+        // 优先级依次为 低翻越 高翻越 地面跳跃 空中二段跳 
+        private void HandleJumpIntent(PlayerRuntimeData data)
         {
-            var data = _player.RuntimeData;
-
             // 先检测矮翻越
             if (TryGetVaultIntent(data, out VaultObstacleInfo info, _config.Vaulting.LowVaultMinHeight, _config.Vaulting.LowVaultMaxHeight))
             {
@@ -101,16 +101,14 @@ namespace Characters.Player.Processing
         public bool TryGetVaultIntent(PlayerRuntimeData data, out VaultObstacleInfo info, float minHeight, float maxHeight)
         {
             info = new VaultObstacleInfo { IsValid = false };
-            // 允许在地面上检测，也允许在已执行过二段跳的空中情况检测翻越（便于二段跳结束后接翻越）
+            // 允许在地面上检测 也允许在已执行过二段跳的空中情况检测翻越 便于二段跳结束后接翻越
             if (!data.IsGrounded && !data.HasPerformedDoubleJumpInAir) return false;
 
-            // 按下按键时，调用静默模式(不画线)的检测，获取最新数据
+            // 按下按键时 调用静默模式的检测 获取最新数据
             return DetectObstacle(out info, minHeight, maxHeight, true);
         }
 
-        /// <summary>
-        /// 纯粹的数学和物理检测逻辑 (无绘制开销)
-        /// </summary>
+        // 纯粹的数学和物理检测逻辑 无绘制开销 
         private bool DetectObstacle(out VaultObstacleInfo info, float minHeight, float maxHeight, bool isSilent)
         {
             info = new VaultObstacleInfo { IsValid = false };
@@ -119,12 +117,12 @@ namespace Characters.Player.Processing
             Vector3 rayStart = root.position + Vector3.up * _config.Vaulting.VaultForwardRayHeight;
             Vector3 forward = root.forward;
 
-            // --- 第一步：向前找墙 ---
+            // 第一步 向前找墙 
             if (Physics.Raycast(rayStart, forward, out RaycastHit wallHit, _config.Vaulting.VaultForwardRayLength, _obstacleMask))
             {
                 if (Vector3.Dot(wallHit.normal, Vector3.up) > 0.1f) return false;
 
-                // --- 第二步：向下找墙沿 ---
+                // 第二步 向下找墙沿 
                 Vector3 downRayStart = wallHit.point + Vector3.up * _config.Vaulting.VaultDownwardRayLength + forward * _config.Vaulting.VaultDownwardRayOffset;
 
                 if (Physics.Raycast(downRayStart, Vector3.down, out RaycastHit ledgeHit, _config.Vaulting.VaultDownwardRayLength, _obstacleMask))
@@ -134,7 +132,7 @@ namespace Characters.Player.Processing
                     float height = ledgeHit.point.y - root.position.y;
                     if (height < minHeight || height > maxHeight) return false;
 
-                    // --- 第三步：寻找墙后落地点 ---
+                    // 第三步 寻找墙后落地点 
                     Vector3 vaultForwardDir = -wallHit.normal;
                     Vector3 landRayStart = ledgeHit.point + vaultForwardDir * _config.Vaulting.VaultLandDistance + Vector3.up * 0.5f;
                     Vector3 finalLandPoint = Vector3.zero;
@@ -156,7 +154,7 @@ namespace Characters.Player.Processing
                         finalLandPoint = landRayStart + Vector3.down * 0.5f;
                     }
 
-                    // --- 第四步：组装数据（修复手部握持方向）---
+                    // 第四步 组装数据 修复手部握持方向
                     info.IsValid = true;
                     info.WallPoint = wallHit.point;
                     info.WallNormal = wallHit.normal;
@@ -166,15 +164,15 @@ namespace Characters.Player.Processing
                     Vector3 ledgeEdge = new Vector3(wallHit.point.x, ledgeHit.point.y, wallHit.point.z);
                     info.LedgePoint = ledgeEdge;
 
-                    // 关键改动：根据角色与墙体的相对位置调整手部方向
+                    // 关键改动 根据角色与墙体的相对位置调整手部方向
                     // 计算从墙沿指向角色位置的方向向量
                     Vector3 charToWall = (ledgeEdge - root.position).normalized;
                     
-                    // 以墙法线和角色指向为基准，使用右手法则计算右方向
-                    // 这样可以确保无论角色从哪个方向靠近墙体，手部方向始终保持一致
+                    // 以墙法线和角色指向为基准 使用右手法则计算右方向
+                    // 这样可以确保无论角色从哪个方向靠近墙体 手部方向始终保持一致
                     Vector3 rightDir = Vector3.Cross(Vector3.up, wallHit.normal).normalized;
                     
-                    // 如果角色在墙的右侧，需要翻转右方向，使手部方向与角色相对位置匹配
+                    // 如果角色在墙的右侧 需要翻转右方向 使手部方向与角色相对位置匹配
                     float dotProduct = Vector3.Dot(charToWall, rightDir);
                     if (dotProduct < 0)
                     {
@@ -190,7 +188,5 @@ namespace Characters.Player.Processing
             }
             return false;
         }
-
-
     }
 }

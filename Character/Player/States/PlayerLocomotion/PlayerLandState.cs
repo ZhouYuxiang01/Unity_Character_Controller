@@ -4,13 +4,8 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 落地状态。
-    /// 职责：
-    /// A：按 FallHeightLevel 选落地缓冲动画（Walk/Jog/Sprint 四档 + 超限）并播放完再回 MoveLoop/Idle
-    /// B：落地时如果 IsAiming 直接进 AimIdle/AimMove（不播落地缓冲）
-    /// C：落地动画末相位写入 ExpectedFootPhase
-    /// </summary>
+    // 玩家落地状态 
+    // 负责选择对应的落地缓冲动画 处理瞄准时直接切换到瞄准状态 最后回到移动或空闲状态 
     public class PlayerLandState : PlayerBaseState
     {
         private int level;
@@ -19,23 +14,21 @@ namespace Characters.Player.States
 
         public PlayerLandState(PlayerController player) : base(player) { }
 
-        // 落地缓冲中一般不希望被通用强制打断（避免反复进入/退出）。
-        // protected override bool CheckInterrupts() => false;
-
+        // 进入状态 根据下落高度等级和当前运动状态选择落地缓冲动画
         public override void Enter()
         {
             level = 0;
             _endTimeTriggered = false;
 
-            // 重置本次空中的二段跳标记（为下次空中做准备）
+            // 重置本次空中的二段跳标记 为下次空中做准备
             data.HasPerformedDoubleJumpInAir = false;
 
             bool wantToMove = data.CurrentLocomotionState != LocomotionState.Idle;
 
-            // B) 落地瞬间如果在瞄准：直接切瞄准状态，不播放落地缓冲
+            // 落地瞬间如果在瞄准 直接切瞄准状态 不播放落地缓冲
             if (data.IsAiming)
             {
-                // 消费 FallHeightLevel（一次性消费数据），然后清零
+                // 消费 FallHeightLevel 一次性消费数据 然后清零
                 data.FallHeightLevel = 0;
                 player.StateMachine.ChangeState(wantToMove
                     ? player.StateRegistry.GetState<PlayerAimMoveState>()
@@ -43,18 +36,18 @@ namespace Characters.Player.States
                 return;
             }
 
-            // A) 根据 FallHeightLevel + LocomotionState 选择落地缓冲动画
+            // 根据 FallHeightLevel + LocomotionState 选择落地缓冲动画
             _currentClip = SelectLandingBufferClip(data.CurrentLocomotionState, data.FallHeightLevel);
 
-            // 消费 FallHeightLevel（一次性消费数据），然后清零
+            // 消费 FallHeightLevel 一次性消费数据 然后清零
             data.FallHeightLevel = 0;
 
             ChooseOptionsAndPlay(_currentClip.Clip);
 
-            // 3) 结束回调：写相位 + 切换状态
+            // 结束回调 写相位 切换状态
             AnimFacade.SetOnEndCallback(() =>
             {
-                // C) 末相位写入（用于 MoveLoop 选左右脚相位）
+                // 末相位写入 用于 MoveLoop 选左右脚相位
                 data.ExpectedFootPhase = _currentClip.EndPhase;
 
                 player.StateMachine.ChangeState(wantToMove
@@ -65,17 +58,16 @@ namespace Characters.Player.States
             data.ExpectedFootPhase = _currentClip.EndPhase;
         }
 
+        // 状态逻辑 一般不响应切换 避免打断缓冲 只允许高优先级 跳跃
         protected override void UpdateStateLogic()
         {
-            // LandState 一般不响应切换（避免打断缓冲），只允许高优先级：跳跃
             if (data.WantsToJump)
             {
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
                 return;
             }
 
-            // 如果权威运动状态不为 Idle：允许按 EndTime 提前切回 MoveLoop。
-            // 说明：wantToMove 取 Enter 时的快照，这里按“权威状态”判断。
+            // 如果权威运动状态不为 Idle 允许按 EndTime 提前切回 MoveLoop
             if (!_endTimeTriggered && data.CurrentLocomotionState != LocomotionState.Idle && 
                 _currentClip != null && _currentClip.EndTime > 0f && AnimFacade.CurrentTime >= _currentClip.EndTime)
             {
@@ -87,6 +79,7 @@ namespace Characters.Player.States
             }
         }
 
+        // 物理更新 委托 MotionDriver 根据烘焙曲线驱动运动
         public override void PhysicsUpdate()
         {
             if (_currentClip == null) return;
@@ -95,6 +88,7 @@ namespace Characters.Player.States
             player.MotionDriver.UpdateMotion(_currentClip, stateTime);
         }
 
+        // 退出状态 清理回调 并根据等级设置下一个状态的淡入参数
         public override void Exit()
         {
             AnimFacade.ClearOnEndCallback();
@@ -102,9 +96,10 @@ namespace Characters.Player.States
             SetupMoveLoopByLevel();
         }
 
+        // 根据运动状态和下落高度等级 选择对应的落地缓冲动画
         private MotionClipData SelectLandingBufferClip(LocomotionState locomotionState, int fallHeightLevel)
         {
-            // fallHeightLevel: 0-3 => L1-L4, 4 => ExceedLimit
+            // fallHeightLevel 0 3 L1 L4 4 ExceedLimit
             if (fallHeightLevel >= 4)
             {
                 data.NextStatePlayOptions = config.JumpAndLanding.LandToLoopFadeInTime_ExceedLimitOptions;
@@ -174,11 +169,12 @@ namespace Characters.Player.States
             }
         }
 
+        // 根据等级设置下一个状态的淡入参数
         private void SetupMoveLoopByLevel()
         {
             switch (level)
             {
-                // Walk/Jog 档位
+                // Walk Jog 档位
                 case 0:
                     data.NextStatePlayOptions = config.JumpAndLanding.LandToLoopFadeInTime_WalkJog_L0ptions;
                     break;

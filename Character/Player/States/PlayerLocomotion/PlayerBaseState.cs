@@ -7,11 +7,9 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家基础状态抽象类
-    /// - 封装通用引用与工具方法
-    /// - 统一 LogicUpdate 执行顺序：先强制转移，再状态自身逻辑
-    /// </summary>
+    // 玩家基础状态抽象类 
+    // 封装所有玩家状态的通用引用与工具方法 
+    // 统一执行顺序 先强制转移再状态自身逻辑 
     [Serializable]
     public abstract class PlayerBaseState : BaseState
     {
@@ -28,38 +26,29 @@ namespace Characters.Player.States
             this.AnimFacade = player.AnimFacade;
         }
 
-
-        /// <summary>
-        /// 统一封闭 LogicUpdate：
-        /// 1) CheckInterrupts：全局强制转移（高优先级）
-        /// 2) UpdateStateLogic：状态自身逻辑
-        /// </summary>
+        // 统一的LogicUpdate流程 
+        // 1) 先检查全局强制转移 高优先级拦截器
+        // 2) 再执行状态自身的逻辑 确保拦截器有最高优先级
         public sealed override void LogicUpdate()
         {
             if (CheckInterrupts()) return;
             UpdateStateLogic();
         }
 
-        /// <summary>
-        /// 全局强制转移检测：重构后通过遍历拦截器实现解耦
-        /// </summary>
+        // 全局强制转移检测 
+        // 通过拦截器集合来解耦状态之间的硬依赖 
         protected virtual bool CheckInterrupts()
         {
             return player.InterruptProcessor.TryProcessInterrupts(this);
         }
 
-
-        /// <summary>
-        /// 状态自身的正常逻辑。
-        /// 之前写在 LogicUpdate 里的内容应迁移到这里。
-        /// </summary>
+        // 状态自身的正常逻辑 
+        // 各个派生状态在这里实现自己的核心行为 
         protected abstract void UpdateStateLogic();
 
-        /// <summary> 选择播放配置的状态机公共api
-        /// <summary>
-        /// 选择动画播放选项并播放。
-        /// 优先使用 NextStatePlayOptions（临时覆写），否则使用默认选项。
-        /// </summary>
+        // 选择动画播放选项并播放 
+        // 优先使用 NextStatePlayOptions 临时覆写 否则使用默认选项
+        // 这样设计允许其他系统临时改变下一个状态的播放参数 
         protected void ChooseOptionsAndPlay(ClipTransition clip)
         {
             if (AnimFacade == null)
@@ -68,8 +57,8 @@ namespace Characters.Player.States
                 return;
             }
 
-            // 优先级：NextStatePlayOptions >  默认值
-            var options = data.NextStatePlayOptions ??  AnimPlayOptions.Default;
+            // 优先级 NextStatePlayOptions 默认值
+            var options = data.NextStatePlayOptions ?? AnimPlayOptions.Default;
             options.Layer = 0;
             
             AnimFacade.PlayTransition(clip, options);

@@ -3,62 +3,68 @@ using UnityEngine;
 
 namespace Characters.Player.Data
 {
-    /// <summary>
-    /// 翻越系统配置模块 (ScriptableObject)。
-    /// 包含所有与翻越相关的探测参数、动画数据和高度阈值。
-    /// </summary>
-    [CreateAssetMenu(fileName = "VaultingModule", menuName = "Player/Modules/Vaulting Module")]
+    // 翻越系统配置模块 它负责管理越过障碍物的所有参数 包括检测 动画 IK等 
+    // 翻越是复杂的多层协调动作 改这里的参数时要同时改对应的动画数据 不然会断手断脚 
+    [CreateAssetMenu(fileName = "VaultingModule", menuName = "BBBNexus/Player/Modules/Vaulting Module")]
     public class VaultingSO : ScriptableObject
     {
-        [Header("VAULT - DETECTION - 翻越检测")]
-        [Tooltip("哪些层被认为是可翻越的障碍物")]
+        [Header("翻越检测 (Vault Detection) - 如何识别可翻越的障碍物")]
+        
+        [Tooltip("障碍物层级掩码 只有这些层的物体才会被视为可翻越的对象")]
         public LayerMask ObstacleLayers;
 
-        [Tooltip("向前探测墙壁的射线长度")]
+        [Tooltip("前向射线长度 米 向前探测多远距离才算遇到障碍 太短容易漏过 太长容易提前触发")]
         public float VaultForwardRayLength = 1.5f;
 
-        [Tooltip("向前探测射线的起点高度 (相对于角色根节点)")]
+        [Tooltip("前向射线高度 米 从角色多高的位置发射前向射线 用于判断墙的位置")]
         public float VaultForwardRayHeight = 1.0f;
 
-        [Tooltip("向下探测墙沿的射线起点，相对于墙面交点的向前偏移量")]
+        [Tooltip("下向射线偏移 米 从前向射线命中点向下这个距离发射下向射线 寻找墙顶部的落脚点")]
         public float VaultDownwardRayOffset = 0.5f;
 
-        [Tooltip("向下探测墙沿的射线长度")]
+        [Tooltip("下向射线长度 米 向下探测多远才能找到落脚点 超出此距离说明墙太高")]
         public float VaultDownwardRayLength = 2.0f;
 
         [Space]
-        [Tooltip("双手在墙沿上的间距")]
+        [Tooltip("双手抓握点宽度 米 两只手要隔多远 太近容易抖 太宽不自然")]
         public float VaultHandSpread = 0.4f;
 
-        [Tooltip("寻找墙后落地点的探测距离")]
+        [Tooltip("落脚点搜索距离 米 在墙顶下方多远范围内搜索平的落脚点")]
         public float VaultLandDistance = 1.5f;
 
-        [Tooltip("寻找落地点的射线长度")]
+        [Tooltip("落脚点射线长度 米 向下探测多远来确认落脚点 确保有稳定的地面")]
         public float VaultLandRayLength = 3.0f;
 
-        [Tooltip("是否必须找到墙后的地面才能翻越？")]
+        [Tooltip("是否需要墙后有地面 如果启用 则墙后没有地面的地方无法翻越(防止翻到悬崖)")]
         public bool RequireGroundBehindWall = true;
 
-        [Header("VAULT - HEIGHT THRESHOLDS - 翻越高度阈值")]
-        [Tooltip("低翻越的最小高度")]
+        [Header("翻越高度分级 (Vault Height Classification) - 不同高度用不同的翻越方式")]
+        
+        [Tooltip("低翻越最小高度 米 障碍物低于此值不能用翻越 会直接走过去 或者摔跤")]
         public float LowVaultMinHeight = 0.5f;
-        [Tooltip("低翻越的最大高度")]
+        
+        [Tooltip("低翻越最大高度 米 超过此值必须用高翻越 否则无法通过")]
         public float LowVaultMaxHeight = 1.2f;
 
         [Space]
-        [Tooltip("高翻越的最小高度")]
+        [Tooltip("高翻越最小高度 米 低于此值不需要高翻越")]
         public float HighVaultMinHeight = 1.2f;
-        [Tooltip("高翻越的最大高度")]
+        
+        [Tooltip("高翻越最大高度 米 超过此值无法翻越 只能找其他路")]
         public float HighVaultMaxHeight = 2.5f;
 
-        [Header("VAULT - ANIMATION DATA - 翻越动画数据")]
+        [Header("翻越动画数据 (Vault Animation Data) - 带根运动与IK的翻越动画")]
+        
+        [Tooltip("翻越结束后到待机状态的淡入参数")]
         public AnimPlayOptions VaultToIdleOptions = AnimPlayOptions.Default;
+        
+        [Tooltip("翻越结束后到移动循环的淡入参数")]
         public AnimPlayOptions VaultToMoveOptions = AnimPlayOptions.Default;
 
-        [Tooltip("低翻越使用的 Warped Motion 动画数据")]
+        [Tooltip("低翻越使用的带根运动的翻越动画数据 包含IK目标点与播放速率")]
         public WarpedMotionData lowVaultAnim;
 
-        [Tooltip("高翻越使用的 Warped Motion 动画数据")]
+        [Tooltip("高翻越使用的带根运动的翻越动画数据 通常比低翻越要花的时间更长")]
         public WarpedMotionData highVaultAnim;
     }
 }

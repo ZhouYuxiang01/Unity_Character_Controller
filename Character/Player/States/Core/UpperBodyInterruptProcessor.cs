@@ -1,9 +1,10 @@
 using Characters.Player.Core;
-using Characters.Player.States;
 using Characters.Player.Expression;
 
-namespace Characters.Player.Processing
+namespace Characters.Player.States
 {
+    // 上半身拦截处理器 它负责管理上半身子状态机的优先级切换 
+    // 职责 遍历上半身专属的拦截器 根据优先级决定是否切换上半身状态
     public class UpperBodyInterruptProcessor
     {
         private readonly PlayerController _player;
@@ -15,6 +16,8 @@ namespace Characters.Player.Processing
             _upperBody = upperBody;
         }
 
+        // 尝试处理上半身拦截 
+        // 依次遍历 PlayerBrainSO 中的上半身拦截器集合 如果有拦截器返回 true 就切换状态
         public bool TryProcessInterrupts(UpperBodyBaseState currentState)
         {
             if (_player.Config == null || _player.Config.Brain == null || _player.Config.Brain.UpperBodyInterceptors == null)

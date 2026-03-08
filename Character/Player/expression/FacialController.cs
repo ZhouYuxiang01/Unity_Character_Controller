@@ -4,22 +4,23 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Expression
 {
-    /// <summary>
-    /// Facial layer controller
-    /// </summary>
+    // 面部表情分层控制器
+    // 它负责在指定动画层上播放基础表情和瞬时表情
+    // 根据运行时黑板触发短期表情并在结束后恢复基础表情
+    // 通过 Animancer 的层与事件系统管理播放与回调，保护旧的回调不影响新的瞬时表情
     public class       FacialController
     {
         private readonly AnimancerLayer _layer;
         private readonly PlayerSO _config;
         private readonly PlayerRuntimeData _data;
 
-        // current base expression
+        // 当前基础表情
         private ClipTransition _currentBaseExpression;
 
-        // whether a transient expression is playing
+        // 是否有瞬时表情正在播放
         private bool _isPlayingTransient;
 
-        // token to identify the latest transient so that older interrupted transients don't trigger end logic
+        // 播放令牌 用于标识最近一次瞬时表情 避免旧回调影响新播放
         private int _transientPlayToken;
 
         public FacialController(AnimancerComponent animancer, PlayerSO config, PlayerRuntimeData runtimeData = null)
@@ -27,17 +28,17 @@ namespace Characters.Player.Expression
             _config = config;
             _data = runtimeData;
 
-            // get Layer 2
+            // 使用动画层 2 作为面部层
             _layer = animancer.Layers[2];
 
-            // set mask from Core module
+            // 从 Core 模块注入遮罩
             if (_config != null && _config.Core != null)
                 _layer.Mask = _config.Core.FacialMask;
 
-            // ensure layer weight
+            // 确保层权重为 1
             _layer.Weight = 1f;
 
-            // default base expression: Emj.BaseExpression > Core.BlinkAnim
+            // 默认基础表情：优先使用 Emj.BaseExpression，其次回退到 Core.BlinkAnim
             if (_config != null && _config.Emj != null && _config.Emj.BaseExpression != null && _config.Emj.BaseExpression.Clip != null)
                 _currentBaseExpression = _config.Emj.BaseExpression;
             else if (_config != null && _config.Core != null)
@@ -46,16 +47,14 @@ namespace Characters.Player.Expression
             PlayBaseExpression();
         }
 
-        /// <summary>
-        /// Should be called each frame by PlayerController.
-        /// Monitors RuntimeData intents and triggers facial expressions.
-        /// </summary>
+        // 每帧由 PlayerController 调用
+        // 检查运行时黑板中的表情意图并触发相应的瞬时表情
         public void Update()
         {
             if (_data == null || _config == null) return;
             if (_config.Emj == null) return;
 
-            // Allow transient expressions to interrupt each other by not returning early when one is playing.
+            // 允许瞬时表情相互打断，不在播放时直接返回
             if (_data.WantsExpression1)
             {
                 PlayTransientExpression(_config.Emj.SpecialExpression1, 0.1f);
@@ -74,11 +73,13 @@ namespace Characters.Player.Expression
             }
         }
 
+        // 播放瞬时表情，使用播放令牌保护旧的中断回调
+        // expressionClip 为空时不做任何操作
         public void PlayTransientExpression(ClipTransition expressionClip, float fadeDuration = 0.1f)
         {
             if (expressionClip == null || expressionClip.Clip == null) return;
 
-            // Increment token so any previous transient's end callback will be ignored.
+            // 增加令牌，使之前的瞬时回调失效
             _transientPlayToken++;
             var token = _transientPlayToken;
 
@@ -88,7 +89,7 @@ namespace Characters.Player.Expression
 
             state.Events(this).OnEnd = () =>
             {
-                // Only handle the end for the most recently started transient.
+                // 仅处理最近一次启动的瞬时表情的结束回调
                 if (token != _transientPlayToken) return;
 
                 _isPlayingTransient = false;
@@ -96,24 +97,7 @@ namespace Characters.Player.Expression
             };
         }
 
-        public void SetBaseExpression(ClipTransition newBaseExpression)
-        {
-            if (newBaseExpression == null) return;
-
-            _currentBaseExpression = newBaseExpression;
-
-            if (!_isPlayingTransient)
-            {
-                PlayBaseExpression(0.25f);
-            }
-        }
-
-        public void PlayHurtExpression()
-        {
-            if (_config != null && _config.Core != null)
-                PlayTransientExpression(_config.Core.HurtFaceAnim, 0.1f);
-        }
-
+        // 播放当前设置的基础表情
         private void PlayBaseExpression(float fadeDuration = 0.25f)
         {
             if (_currentBaseExpression != null && _currentBaseExpression.Clip != null)

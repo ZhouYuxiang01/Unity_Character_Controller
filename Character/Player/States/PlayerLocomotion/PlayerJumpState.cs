@@ -4,6 +4,8 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
+    // 玩家跳跃状态 
+    // 负责播放跳跃动画 施加跳跃力量 检测落地时机切换到落地或下落状态 
     public class PlayerJumpState : PlayerBaseState
     {
         private MotionClipData _clipData;
@@ -12,6 +14,7 @@ namespace Characters.Player.States
 
         public PlayerJumpState(PlayerController player) : base(player) { }
 
+        // 进入状态 选择跳跃动画 施加跳跃力量 注册结束回调
         public override void Enter()
         {
             _canCheckLand = false;
@@ -22,8 +25,7 @@ namespace Characters.Player.States
 
             AnimFacade.SetOnEndCallback(() =>
             {
-                // Ensure the end callback is cleared when invoked so it doesn't keep firing
-                // every frame if the animation hasn't been stopped by playing another one.
+                // 回调触发时清理自己 防止动画没停止时反复触发
                 AnimFacade.ClearOnEndCallback();
 
                 if (player.CharController.isGrounded)
@@ -36,6 +38,7 @@ namespace Characters.Player.States
             PerformJumpPhysics();
         }
 
+        // 根据当前运动状态和装备情况选择对应的跳跃动画和跳跃力量
         private void SelectJumpAnimation()
         {
             bool isHandsEmpty = data.CurrentItem == null;
@@ -63,19 +66,21 @@ namespace Characters.Player.States
                     break;
 
                 default:
-                    Debug.Log(" JumpAirAnim 配置缺失，使用默认跳跃动画");
+                    Debug.Log(" JumpAirAnim 配置缺失 使用默认跳跃动画");
                     _clipData = config.JumpAndLanding.JumpAirAnim;
                     _jumpForce = config.JumpAndLanding.JumpForce;
                     break;
             }
         }
 
+        // 施加跳跃力量 设置垂直速度和接地状态
         private void PerformJumpPhysics()
         {
             data.VerticalVelocity = _jumpForce;
             data.IsGrounded = false;
         }
 
+        // 状态逻辑 检测二段跳和落地条件
         protected override void UpdateStateLogic()
         {
             if (data.WantsDoubleJump && !data.IsGrounded)
@@ -98,11 +103,13 @@ namespace Characters.Player.States
             }
         }
 
+        // 物理更新 委托 MotionDriver 处理重力等运动
         public override void PhysicsUpdate()
         {
             player.MotionDriver.UpdateMotion(null, 0f);
         }
 
+        // 退出状态 清理回调和动画数据
         public override void Exit()
         {
             AnimFacade.ClearOnEndCallback();

@@ -6,18 +6,8 @@ using UnityEngine;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家二段跳状态。
-    /// 
-    /// 职责：
-    /// 1. 在空中执行二段跳，复用 PlayerJumpState 的动画选择和物理逻辑。
-    /// 2. 在进入时标记 HasPerformedDoubleJumpInAir = true，防止重复二段跳。
-    /// 3. 等待落地后转移到 LandState。
-    /// 
-    /// 与 PlayerJumpState 的区别：
-    /// - JumpState：地面起跳，初速度由 CurrentLocomotionState 决定
-    /// - DoubleJumpState：空中跳跃，需要在进入时标记"本次空中已执行二段跳"
-    /// </summary>
+    // 玩家二段跳状态 
+    // 负责在空中执行二段跳 选择对应的二段跳动画 标记已使用二段跳 最后落地
     public class PlayerDoubleJumpState : PlayerBaseState
     {
         private MotionClipData _clipData;
@@ -26,6 +16,7 @@ namespace Characters.Player.States
 
         public PlayerDoubleJumpState(PlayerController player) : base(player) { }
 
+        // 进入状态 选择二段跳动画 施加跳跃力量 标记已使用二段跳
         public override void Enter()
         {
             _canCheckLand = false;
@@ -44,19 +35,12 @@ namespace Characters.Player.States
             });
         }
 
-        /// <summary>
-        /// 根据运动状态和装备情况选择合适的二段跳动画和力度。
-        /// 
-        /// 逻辑：
-        /// 1. 二段跳仅向上（Up 方向）
-        /// 2. 按运动状态和装备情况选择 DoubleJumpUp 或基础跳跃配置
-        /// 3. 未找到则 fallback 到标准跳跃动画
-        /// </summary>
+        // 根据运动状态和装备选择对应的二段跳动画和力量
         private void SelectDoubleJumpAnimation()
         {
             bool isHandsEmpty = data.CurrentItem == null;
 
-            // 根据运动状态和装备获取基础配置
+            // 根据当前运动状态和装备选择 
             MotionClipData baseClip = null;
             float baseForce = config.JumpAndLanding.JumpForce;
 
@@ -83,7 +67,7 @@ namespace Characters.Player.States
                     break;
 
                 default:
-                    Debug.Log(" DoubleJumpUp 配置缺失，使用 JumpAirAnim 作为二段跳动画");
+                    Debug.Log(" DoubleJumpUp 配置缺失 使用 JumpAirAnim 作为后备");
                     baseClip = config.JumpAndLanding.JumpAirAnim;
                     baseForce = config.JumpAndLanding.DoubleJumpForceUp;
                     break;
@@ -92,32 +76,36 @@ namespace Characters.Player.States
             _jumpForce = baseForce;
         }
 
+        // 施加二段跳力量 设置垂直速度和接地状态
         private void PerformJumpPhysics()
         {
             data.VerticalVelocity = _jumpForce;
             data.IsGrounded = false;
         }
 
+        // 状态逻辑 检测落地时机
         protected override void UpdateStateLogic()
         {
-            // 防抖：起跳后至少过 0.2s 才开始检测落地
+            // 给动画启动后 0.2s 才开始检测落地
             if (!_canCheckLand && AnimFacade.CurrentTime > 0.2f)
             {
                 _canCheckLand = true;
             }
 
-            // 落地检测
+            // 检测落地
             if (_canCheckLand && data.VerticalVelocity <= 0 && player.CharController.isGrounded)
             {
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerLandState>());
             }
         }
 
+        // 物理更新 委托 MotionDriver 处理重力
         public override void PhysicsUpdate()
         {
             player.MotionDriver.UpdateMotion(null, 0f);
         }
 
+        // 退出状态 清理回调和动画数据
         public override void Exit()
         {
             AnimFacade.ClearOnEndCallback();

@@ -1,9 +1,8 @@
 namespace Characters.Player.Data
 {
-    /// <summary>
-    /// 玩家所有可用状态的枚举。
-    /// 每新增一个实体状态类，就在这里加一个枚举值。
-    /// </summary>
+    // 玩家状态类型枚举 
+    // 定义了所有可用的下半身状态 新增状态时务必在此枚举中添加对应的值
+    // 这个枚举主要用于调试和状态识别 配合状态字典进行映射
     public enum PlayerStateType
     {
         Idle,
@@ -19,6 +18,5 @@ namespace Characters.Player.Data
         Vault,
         AimIdle,
         AimMove
-        // 未来如果有 Swim, Climb 等，直接往这里加
     }
 }

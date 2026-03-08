@@ -3,42 +3,39 @@ using System;
 
 namespace Items.Core
 {
-    /// <summary>
-    /// 物品运行时逻辑实例
-    /// 存在于背包或玩家黑板中，是物品逻辑的中心。
-    /// </summary>
+    // 物品运行时逻辑实例 存储在背包和手上 记录物品逻辑状态 
+    // 多个相同配置的物品可能存在 但每个实例都有独立的身份与堆叠数量 
     public class ItemInstance
     {
-        /// <summary>
-        /// 运行时的唯一实例 ID（用于区分两把相同的 AK47）
-        /// </summary>
+        // 运行时的唯一实例 ID 即便两个物品都是 AK47 它们的 ID 也完全不同 
+        // 这用于精确追踪单个持有物品 方便卸载时精确删除 
         public string InstanceID { get; private set; }
 
-        /// <summary>
-        /// 绑定的静态图纸 (只读)
-        /// </summary>
+        // 绑定的离线配置 这是静态数据的源头 包含模型预制体 动画等 
+        // 一旦赋值就不会改变 所有实例共享同一份配置 
         public ItemDefinitionSO BaseData { get; private set; }
 
-        /// <summary>
-        /// 当前的堆叠数量
-        /// </summary>
+        // 当前的堆叠数量 对于无堆叠物品永远是 1 对于消耗品会逐次递减 
+        // 当数量归零时 背包系统会将该实例从槽位移除 
         public int CurrentAmount { get; set; }
 
-        /// <summary>
-        /// 构造函数：基于静态图纸生成一个内存中的活体实例
-        /// </summary>
+        // 构造函数 接收静态配置与初始数量 生成一个内存中的独立实例 
+        // 每次构造都会分配新的 InstanceID 即使配置相同 
         public ItemInstance(ItemDefinitionSO baseData, int amount = 1)
         {
-            InstanceID = Guid.NewGuid().ToString(); // 赋予唯一的灵魂代码
+            // 使用 GUID 保证全局唯一性 即使在不同场景或会话中也不会重复 
+            InstanceID = Guid.NewGuid().ToString();
+            // 保存配置引用 后续所有查询都通过这个引用获取数据 
             BaseData = baseData;
+            // 初始化堆叠数量 
             CurrentAmount = amount;
         }
 
-        // ==========================================
-        // 核心：类型安全的强转快捷方法（供表现层提取特定数据用）
-        // ==========================================
+        // 类型转换接口 安全地将配置强转为特定子类 
+        // 这样不同的物品类型 剑 枪 药水 可以各自实现特定的配置类 
         public T GetSODataAs<T>() where T : ItemDefinitionSO
         {
+            // 强转失败会返回 null 上游需自行处理 
             return BaseData as T;
         }
     }

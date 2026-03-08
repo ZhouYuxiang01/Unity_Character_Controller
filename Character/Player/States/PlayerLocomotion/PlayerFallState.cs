@@ -4,33 +4,22 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家下落状态。
-    /// 职责：
-    /// - 进入时播放 LocomotionAnimSetSO 中的 FallAnim
-    /// - 持续检测落地事件，当检测到落地时立即转移到 LandState
-    /// - 应用物理驱动（重力等）
-    /// </summary>
+    // 玩家下落状态 
+    // 负责播放下落动画 持续应用重力 检测落地时机切换到LandState 
     public class PlayerFallState : PlayerBaseState
     {
         public PlayerFallState(PlayerController player) : base(player) { }
 
-        #region State Lifecycle
-
-        /// <summary>
-        /// 进入状态：播放下落动画
-        /// </summary>
+        // 进入状态 播放下落动画
         public override void Enter()
         {
             ChooseOptionsAndPlay(config.LocomotionAnims.FallAnim);
         }
 
-        /// <summary>
-        /// 更新状态逻辑：持续检测落地事件，防止卡死在下落状态
-        /// </summary>
+        // 状态逻辑 检测落地事件并切换到LandState
         protected override void UpdateStateLogic()
         {
-            // 检测是否已经落地：刚落地且有下落高度
+            // 检查是否已经接地 接地就立即切到落地状态
             if (data.IsGrounded)
             {
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerLandState>());
@@ -38,22 +27,15 @@ namespace Characters.Player.States
             }
         }
 
-        /// <summary>
-        /// 物理更新：继续应用物理驱动（重力等）
-        /// </summary>
+        // 物理更新 持续应用重力与运动逻辑
         public override void PhysicsUpdate()
         {
             player.MotionDriver.UpdateMotion();
         }
 
-        /// <summary>
-        /// 退出状态：清理资源
-        /// </summary>
+        // 退出状态 无额外清理逻辑
         public override void Exit()
         {
-            // 无需额外清理逻辑
         }
-
-        #endregion
     }
 }

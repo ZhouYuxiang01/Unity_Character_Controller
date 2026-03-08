@@ -4,7 +4,10 @@ using UnityEngine;
 
 namespace Characters.Player.States
 {
-    [CreateAssetMenu(fileName = "AimInterceptor", menuName = "Player/Interceptors/Aim")]
+    // 瞄准全局拦截器 
+    // 负责瞄准模式的全局启用与禁用 优先级在运动状态之上 
+    // 按住右键时强制切到瞄准状态 松开时回到普通移动
+    [CreateAssetMenu(fileName = "AimInterceptor", menuName = "BBBNexus/Player/Interceptors/Aim")]
     public class AimInterceptorSO : StateInterceptorSO
     {
         public override bool TryIntercept(PlayerController player, PlayerBaseState currentState, out PlayerBaseState nextState)
@@ -12,14 +15,14 @@ namespace Characters.Player.States
             nextState = null;
             var data = player.RuntimeData;
 
-            // 原逻辑：全局瞄准切换保护机制
+            // 瞄准模式的全局切换保护机制
             if (data.IsAiming)
             {
-                // 如果当前已经在瞄准状态（AimIdle/AimMove），让状态正常运行
+                // 如果当前已经在瞄准状态 AimIdle AimMove 让状态正常运行 不拦截
                 if (currentState is PlayerAimIdleState || currentState is PlayerAimMoveState)
                     return false;
 
-                // 保护动作完整性：如果处于跳跃、二段跳、落地、翻越等状态，不在此处强行拦截
+                // 保护动作完整性 如果处于跳跃 二段跳 落地 翻越等状态 不在此处强行拦截
                 if (currentState is PlayerJumpState ||
                     currentState is PlayerDoubleJumpState ||
                     currentState is PlayerLandState ||

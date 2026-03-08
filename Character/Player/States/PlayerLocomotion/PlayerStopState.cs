@@ -4,22 +4,13 @@ using Animancer;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家的"停止"状态。
-    /// 职责：
-    /// 1. 根据当前的运动状态（Walk/Jog/Sprint）和脚相位选择合适的急停动画。
-    /// 2. 播放急停动画（包含减速/制动）。
-    /// 3. 动画完成后切换到空闲状态（Idle）。
-    /// 
-    /// 映射关系：
-    /// - Walk  → WalkStop (Left/Right)
-    /// - Jog   → RunStop (Left/Right)   [RunStop 对应 Jog 的慢跑]
-    /// - Sprint → SprintStop (Left/Right)
-    /// </summary>
+    // 玩家停止状态 
+    // 负责根据当前运动状态和脚相位选择急停动画 播放减速制动动画 最后回到空闲状态 
     public class PlayerStopState : PlayerBaseState
     {
         public PlayerStopState(PlayerController player) : base(player) { }
 
+        // 进入状态 选择对应的急停动画并注册结束回调
         public override void Enter()
         {
             // 根据运动状态和脚相位选择对应的急停动画
@@ -27,14 +18,15 @@ namespace Characters.Player.States
 
             ChooseOptionsAndPlay(stopClip);
 
-            // 动画完毕 -> 回到 Idle
+            // 动画完毕 回到 Idle
             AnimFacade.SetOnEndCallback(() =>
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerIdleState>()));
         }
 
+        // 状态逻辑 检测再次输入移动或跳跃
         protected override void UpdateStateLogic()
         {
-            // 停止时检测输入 -> 重新开始移动
+            // 停止时检测输入 重新开始移动
             if (data.CurrentLocomotionState != LocomotionState.Idle)
             {
                 data.NextStatePlayOptions = new AnimPlayOptions { FadeDuration = 0.4f };
@@ -49,47 +41,39 @@ namespace Characters.Player.States
             }
         }
 
+        // 物理更新 停止状态下仍需更新重力和接地检测
         public override void PhysicsUpdate()
         {
-            // 停止状态下仍需更新重力和接地检测
             player.MotionDriver.UpdateMotion();
         }
 
+        // 退出状态 清理回调
         public override void Exit()
         {
             AnimFacade.ClearOnEndCallback();
         }
 
-        #region Helper Methods
-
-        /// <summary>
-        /// 根据运动状态和脚相位选择对应的急停动画。
-        /// </summary>
-        /// <param name="locomotionState">当前运动状态（Walk/Jog/Sprint）</param>
-        /// <param name="cycleTime">当前脚相位（0~1，0.5 为分界）</param>
-        /// <returns>选中的急停动画</returns>
+        // 根据运动状态和脚相位选择对应的急停动画
         private ClipTransition SelectStopClipForLocomotionState(LocomotionState locomotionState, float cycleTime)
         {
-            // 判定脚相位：< 0.5 为左脚，>= 0.5 为右脚
+            // 判定脚相位 小于 0.5 为左脚 大于等于 0.5 为右脚
             bool isLeftFoot = cycleTime < 0.5f;
 
             return locomotionState switch
             {
-                // Walk：选择走路停止动画
+                // Walk 选择走路停止动画
                 LocomotionState.Walk => isLeftFoot ? config.LocomotionAnims.WalkStopLeft : config.LocomotionAnims.WalkStopRight,
 
-                // Jog：选择跑步停止动画（RunStop 对应 Jog 的慢跑）
+                // Jog 选择跑步停止动画 RunStop 对应 Jog 的慢跑
                 LocomotionState.Jog => isLeftFoot ? config.LocomotionAnims.RunStopLeft : config.LocomotionAnims.RunStopRight,
 
-                // Sprint：选择冲刺停止动画
+                // Sprint 选择冲刺停止动画
                 LocomotionState.Sprint => isLeftFoot ? config.LocomotionAnims.SprintStopLeft : config.LocomotionAnims.SprintStopRight,
 
-                // 默认：使用 RunStop（Jog）
+                // 默认 使用 RunStop Jog
                 _ => isLeftFoot ? config.LocomotionAnims.RunStopLeft : config.LocomotionAnims.RunStopRight
             };
         }
-
-        #endregion
     }
 }
 

@@ -10,7 +10,6 @@ namespace Characters.Player.Input
         public Vector2 Move;
         public Vector2 Look;
 
-        // 动作状态：手动边沿检测，支持 Consume 改写
         public bool JumpPressed;
         public bool JumpHeld;
 
@@ -30,62 +29,58 @@ namespace Characters.Player.Input
         public bool FirePressed;
         public bool FireHeld;
 
-        // Expression
         public bool Expression1Pressed;
         public bool Expression2Pressed;
         public bool Expression3Pressed;
         public bool Expression4Pressed;
+
+        public bool Number1Pressed;
+        public bool Number2Pressed;
+        public bool Number3Pressed;
+        public bool Number4Pressed;
+        public bool Number5Pressed;
+
+        public bool WavePressed;
+        public bool InteractHeldState;
+        public bool LeftMousePressed;
+        public bool LeftMouseHeld;
+
+        public bool Expression1Held;
+        public bool Expression2Held;
+        public bool Expression3Held;
+        public bool Expression4Held;
+
+        public bool Number1Held;
+        public bool Number2Held;
+        public bool Number3Held;
+        public bool Number4Held;
+        public bool Number5Held;
+
+        public bool WaveHeld;
     }
 
     public class PlayerInputReader : MonoBehaviour
     {
         #region 1. 配置参数
-        [Header("Mouse Look Settings")]
+        [Header("视角设置")]
         public float mouseSensitivity = 1f;
         public bool invertMouseX = false;
         public bool invertMouseY = false;
         [Range(0f, 0.1f)] public float lookSmoothTime = 0.03f; // 视角微平滑，提升3A感
 
-        [Header("Buffer Settings")]
+        [Header("输入缓冲设置")]
         [SerializeField] private float _inputFlickerBuffer = 0.05f; // 解决闪避清零
         #endregion
 
-        #region 2. 对外接口 (兼容旧版)
-        public Vector2 MoveInput => _currentFrame.Move;
-        public Vector2 LookInput => _currentFrame.Look;
-        public bool IsJumpPressed => _currentFrame.JumpPressed;
-        public bool IsSprinting => _currentFrame.SprintHeld;
-        public bool IsWalking => _currentFrame.WalkHeld;
-        public bool IsAiming => _currentFrame.AimHeld;
-        public bool IsDodgePressed => _currentFrame.DodgePressed;
-        public bool IsRollPressed => _currentFrame.RollPressed;
-        public bool FireInput => _currentFrame.FireHeld;
-
+        #region 2. 对外接口 (直接提供当前帧数据)
+        /// <summary>
+        /// 获取当前帧的输入快照。外部系统应直接读取此属性，而不是旧版的单个属性。
+        /// </summary>
         public PlayerInputFrame Current => _currentFrame;
         #endregion
 
-        #region 3. 事件回调 (兼容旧版)
-        public UnityAction OnWavePressed;
-        public UnityAction OnLeftMouseDown;
-        public UnityAction OnLeftMouseUp;
-        public UnityAction OnJumpPressed; // 注意：这是旧版事件，新逻辑建议直接读 Current.JumpPressed
-        public UnityAction OnAimStarted;
-        public UnityAction OnAimCanceled;
-        public UnityAction OnNumber1Pressed;
-        public UnityAction OnNumber2Pressed;
-        public UnityAction OnNumber3Pressed;
-        public UnityAction OnNumber4Pressed;
-        public UnityAction OnNumber5Pressed;
-
-        // Expression events
-        public UnityAction OnExpression1Pressed;
-        public UnityAction OnExpression2Pressed;
-        public UnityAction OnExpression3Pressed;
-        public UnityAction OnExpression4Pressed;
-        #endregion
-
-        #region 4. Action 引用 (由 Inspector 赋值)
-        [Header("Input References")]
+        #region 3. Action 引用 (由 Inspector 赋值)
+        [Header("输入动作引用")]
         public InputActionReference moveAction;
         public InputActionReference lookAction;
         public InputActionReference jumpAction;
@@ -103,14 +98,14 @@ namespace Characters.Player.Input
         public InputActionReference number5Action;
         public InputActionReference fireAction;
 
-        [Header("Expression Input References")]
+        [Header("表情输入引用")]
         public InputActionReference expression1Action;
         public InputActionReference expression2Action;
         public InputActionReference expression3Action;
         public InputActionReference expression4Action;
         #endregion
 
-        #region 5. 内部状态
+        #region 4. 内部状态
         private PlayerInputFrame _currentFrame;
         private PlayerInputFrame _lastFrame;
 
@@ -126,21 +121,13 @@ namespace Characters.Player.Input
         {
             _lastFrame = _currentFrame;
             _currentFrame = GatherInputFrame();
-
-            // 触发旧版事件回调 (如果这一帧刚刚按下)
-            if (_currentFrame.JumpPressed) OnJumpPressed?.Invoke();
-
-            if (_currentFrame.Expression1Pressed) OnExpression1Pressed?.Invoke();
-            if (_currentFrame.Expression2Pressed) OnExpression2Pressed?.Invoke();
-            if (_currentFrame.Expression3Pressed) OnExpression3Pressed?.Invoke();
-            if (_currentFrame.Expression4Pressed) OnExpression4Pressed?.Invoke();
         }
 
         private PlayerInputFrame GatherInputFrame()
         {
             PlayerInputFrame frame = new PlayerInputFrame();
 
-            // --- A. 移动采样 (带防抖) ---
+            // 移动采样 (带防抖
             Vector2 rawMove = moveAction.action.ReadValue<Vector2>();
             if (rawMove.sqrMagnitude > 0.01f)
             {
@@ -153,13 +140,13 @@ namespace Characters.Player.Input
             }
             frame.Move = rawMove;
 
-            // --- B. 视角采样 (带灵敏度、反转、平滑) ---
+            // 视角采样
             Vector2 rawLook = lookAction.action.ReadValue<Vector2>();
             rawLook.x *= mouseSensitivity * (invertMouseX ? -1f : 1f);
             rawLook.y *= mouseSensitivity * (invertMouseY ? -1f : 1f);
             frame.Look = Vector2.SmoothDamp(_lastFrame.Look, rawLook, ref _currentLookVelocity, lookSmoothTime);
 
-            // --- C. 状态采样 (Held) ---
+            // 状态采样
             frame.JumpHeld = jumpAction.action.IsPressed();
             frame.DodgeHeld = dodgeAction.action.IsPressed();
             frame.RollHeld = rollAction.action.IsPressed();
@@ -168,27 +155,48 @@ namespace Characters.Player.Input
             frame.AimHeld = aimAction.action.IsPressed();
             frame.FireHeld = fireAction.action.IsPressed();
 
-            // --- D. 手动边沿检测 (Pressed) ---
+            // 手动边沿检测
             frame.JumpPressed = frame.JumpHeld && !_lastFrame.JumpHeld;
             frame.DodgePressed = frame.DodgeHeld && !_lastFrame.DodgeHeld;
             frame.RollPressed = frame.RollHeld && !_lastFrame.RollHeld;
             frame.FirePressed = frame.FireHeld && !_lastFrame.FireHeld;
 
-            // Expression edge detection (Pressed)
-            bool ex1Held = expression1Action != null && expression1Action.action.IsPressed();
-            bool ex2Held = expression2Action != null && expression2Action.action.IsPressed();
-            bool ex3Held = expression3Action != null && expression3Action.action.IsPressed();
-            bool ex4Held = expression4Action != null && expression4Action.action.IsPressed();
+            // 表情采样 + 边沿检测
+            frame.Expression1Held = expression1Action != null && expression1Action.action.IsPressed();
+            frame.Expression2Held = expression2Action != null && expression2Action.action.IsPressed();
+            frame.Expression3Held = expression3Action != null && expression3Action.action.IsPressed();
+            frame.Expression4Held = expression4Action != null && expression4Action.action.IsPressed();
 
-            frame.Expression1Pressed = ex1Held && !_lastFrame.Expression1Pressed;
-            frame.Expression2Pressed = ex2Held && !_lastFrame.Expression2Pressed;
-            frame.Expression3Pressed = ex3Held && !_lastFrame.Expression3Pressed;
-            frame.Expression4Pressed = ex4Held && !_lastFrame.Expression4Pressed;
+            frame.Expression1Pressed = frame.Expression1Held && !_lastFrame.Expression1Held;
+            frame.Expression2Pressed = frame.Expression2Held && !_lastFrame.Expression2Held;
+            frame.Expression3Pressed = frame.Expression3Held && !_lastFrame.Expression3Held;
+            frame.Expression4Pressed = frame.Expression4Held && !_lastFrame.Expression4Held;
+
+            // 数字快捷键采样 + 边沿检测（修复：不能用 lastFrame.NumberXPressed 来做边沿）
+            frame.Number1Held = number1Action != null && number1Action.action.IsPressed();
+            frame.Number2Held = number2Action != null && number2Action.action.IsPressed();
+            frame.Number3Held = number3Action != null && number3Action.action.IsPressed();
+            frame.Number4Held = number4Action != null && number4Action.action.IsPressed();
+            frame.Number5Held = number5Action != null && number5Action.action.IsPressed();
+
+            frame.Number1Pressed = frame.Number1Held && !_lastFrame.Number1Held;
+            frame.Number2Pressed = frame.Number2Held && !_lastFrame.Number2Held;
+            frame.Number3Pressed = frame.Number3Held && !_lastFrame.Number3Held;
+            frame.Number4Pressed = frame.Number4Held && !_lastFrame.Number4Held;
+            frame.Number5Pressed = frame.Number5Held && !_lastFrame.Number5Held;
+
+            // 其他功能键采样 + 边沿检测 (Pressed)
+            frame.WaveHeld = waveAction != null && waveAction.action.IsPressed();
+            bool leftMouseHeld = LeftMouseAction != null && LeftMouseAction.action.IsPressed();
+
+            frame.WavePressed = frame.WaveHeld && !_lastFrame.WaveHeld;
+            frame.LeftMousePressed = leftMouseHeld && !_lastFrame.LeftMousePressed;
+            frame.LeftMouseHeld = leftMouseHeld;
 
             return frame;
         }
 
-        #region 消费逻辑 (真正可控)
+        #region 消费逻辑 
         public void ConsumeJump() => _currentFrame.JumpPressed = false;
         public void ConsumeDodge() => _currentFrame.DodgePressed = false;
         public void ConsumeRoll() => _currentFrame.RollPressed = false;
@@ -196,9 +204,16 @@ namespace Characters.Player.Input
         public void ConsumeExpression2() => _currentFrame.Expression2Pressed = false;
         public void ConsumeExpression3() => _currentFrame.Expression3Pressed = false;
         public void ConsumeExpression4() => _currentFrame.Expression4Pressed = false;
+        public void ConsumeNumber1() => _currentFrame.Number1Pressed = false;
+        public void ConsumeNumber2() => _currentFrame.Number2Pressed = false;
+        public void ConsumeNumber3() => _currentFrame.Number3Pressed = false;
+        public void ConsumeNumber4() => _currentFrame.Number4Pressed = false;
+        public void ConsumeNumber5() => _currentFrame.Number5Pressed = false;
+        public void ConsumeWave() => _currentFrame.WavePressed = false;
+        public void ConsumeLeftMouse() => _currentFrame.LeftMousePressed = false;
         #endregion
 
-        #region 事件绑定 (保持旧版兼容)
+        #region 事件绑定 
         private void ToggleActions(bool enable)
         {
             InputActionReference[] all = {
@@ -214,19 +229,6 @@ namespace Characters.Player.Input
                 if (enable)
                 {
                     ar.action.Enable();
-                    if (ar == waveAction) ar.action.performed += _ => OnWavePressed?.Invoke();
-                    if (ar == aimAction) { ar.action.started += _ => OnAimStarted?.Invoke(); ar.action.canceled += _ => OnAimCanceled?.Invoke(); }
-                    if (ar == LeftMouseAction) { ar.action.started += _ => OnLeftMouseDown?.Invoke(); ar.action.canceled += _ => OnLeftMouseUp?.Invoke(); }
-                    if (ar == number1Action) ar.action.performed += _ => OnNumber1Pressed?.Invoke();
-                    if (ar == number2Action) ar.action.performed += _ => OnNumber2Pressed?.Invoke();
-                    if (ar == number3Action) ar.action.performed += _ => OnNumber3Pressed?.Invoke();
-                    if (ar == number4Action) ar.action.performed += _ => OnNumber4Pressed?.Invoke();
-                    if (ar == number5Action) ar.action.performed += _ => OnNumber5Pressed?.Invoke();
-
-                    if (ar == expression1Action) ar.action.performed += _ => OnExpression1Pressed?.Invoke();
-                    if (ar == expression2Action) ar.action.performed += _ => OnExpression2Pressed?.Invoke();
-                    if (ar == expression3Action) ar.action.performed += _ => OnExpression3Pressed?.Invoke();
-                    if (ar == expression4Action) ar.action.performed += _ => OnExpression4Pressed?.Invoke();
                 }
                 else
                 {

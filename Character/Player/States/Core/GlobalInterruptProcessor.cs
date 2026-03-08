@@ -3,10 +3,8 @@ using Characters.Player.States;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 全局打断处理器
-    /// 职责：封装打断管线的遍历与触发逻辑，保持状态机和控制器的轻量化。
-    /// </summary>
+    // 全局拦截处理器 它负责在意图管线之后执行全局优先级的状态转移 
+    // 职责 包装高优先级的拦截器集合 在状态逻辑之前检查是否需要强行切换状态
     public class GlobalInterruptProcessor
     {
         private readonly PlayerController _player;
@@ -16,18 +14,15 @@ namespace Characters.Player.States
             _player = player;
         }
 
-        /// <summary>
-        /// 尝试处理全局打断。
-        /// </summary>
-        /// <param name="currentState">当前正在运行的状态</param>
-        /// <returns>如果发生了状态打断/切换，返回 true</returns>
+        // 尝试处理全局拦截 
+        // 依次遍历 PlayerBrainSO 中的拦截器集合 如果有拦截器返回 true 就切换状态并结束检测
         public bool TryProcessInterrupts(PlayerBaseState currentState)
         {
-            // 如果没有配置管线 跳过
+            // 如果没有配置全局拦截器 直接返回
             if (_player.Config == null || _player.Config.Brain == null || _player.Config.Brain.GlobalInterceptors == null)
                 return false;
 
-            // 遍历配置在 PlayerBrainSO 中的打断器列表
+            // 遍历拦截器管道
             var pipeline = _player.Config.Brain.GlobalInterceptors;
             for (int i = 0; i < pipeline.Count; i++)
             {

@@ -2,10 +2,8 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Processing
 {
-    /// <summary>
-    /// Expression intent processor.
-    /// Reads expression input events and writes one-frame intents into RuntimeData (blackboard).
-    /// </summary>
+    // 表情意图处理器 它负责转接表情输入意图 
+    // 读取输入帧的表情按键状态 并写入一帧的意图标志到黑板 
     public class EojIntentProcessor
     {
         private readonly PlayerController _player;
@@ -15,35 +13,37 @@ namespace Characters.Player.Processing
         {
             _player = player;
             _data = player.RuntimeData;
-
-            if (_player != null && _player.InputReader != null)
-            {
-                _player.InputReader.OnExpression1Pressed += HandleExpression1;
-                _player.InputReader.OnExpression2Pressed += HandleExpression2;
-                _player.InputReader.OnExpression3Pressed += HandleExpression3;
-                _player.InputReader.OnExpression4Pressed += HandleExpression4;
-            }
         }
 
-        ~EojIntentProcessor()
-        {
-            if (_player != null && _player.InputReader != null)
-            {
-                _player.InputReader.OnExpression1Pressed -= HandleExpression1;
-                _player.InputReader.OnExpression2Pressed -= HandleExpression2;
-                _player.InputReader.OnExpression3Pressed -= HandleExpression3;
-                _player.InputReader.OnExpression4Pressed -= HandleExpression4;
-            }
-        }
-
+        // 每帧检查表情按键 消费按键状态并写入黑板意图 
         public void Update()
         {
-            // No per-frame scanning needed. Intents are set by events and cleared in RuntimeData.ResetIntetnt().
-        }
+            // 直接读取当前帧的输入状态
+            if (_player?.InputReader == null) return;
 
-        private void HandleExpression1() => _data.WantsExpression1 = true;
-        private void HandleExpression2() => _data.WantsExpression2 = true;
-        private void HandleExpression3() => _data.WantsExpression3 = true;
-        private void HandleExpression4() => _data.WantsExpression4 = true;
+            var inputFrame = _player.InputReader.Current;
+
+            // 根据表情按键状态设置黑板意图
+            if (inputFrame.Expression1Pressed)
+            {
+                _data.WantsExpression1 = true;
+                _player.InputReader.ConsumeExpression1();
+            }
+            if (inputFrame.Expression2Pressed)
+            {
+                _data.WantsExpression2 = true;
+                _player.InputReader.ConsumeExpression2();
+            }
+            if (inputFrame.Expression3Pressed)
+            {
+                _data.WantsExpression3 = true;
+                _player.InputReader.ConsumeExpression3();
+            }
+            if (inputFrame.Expression4Pressed)
+            {
+                _data.WantsExpression4 = true;
+                _player.InputReader.ConsumeExpression4();
+            }
+        }
     }
 }

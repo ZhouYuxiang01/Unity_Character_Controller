@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Items.Data.Weapons;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "New CannonSO", menuName = "BBBNexus/Items/Weapons/CannonSO")]
+[CreateAssetMenu(fileName = "New CannonSO", menuName = "BBBNexus/Items/Weapons/Cannon")]
 public class CannonSO : RangedWeaponSO
 {
     [Header("--- Cannon专属动画参数 ---")]

@@ -4,31 +4,21 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家的"起步"状态。
-    /// 职责:
-    /// 1. 根据玩家的运动状态（Walk/Jog/Sprint），选择一个合适的起步动画（8个方向）。
-    /// 2. 播放该动画，并委托 MotionDriver 根据烘焙数据驱动角色移动。
-    /// 3. 动画播放结束后，切换到持续移动状态 (PlayerMoveLoopState)。
-    /// </summary>
+    // 玩家起步状态 
+    // 负责根据运动状态和移动方向选择8方向起步动画 并驱动角色初始移动 
+    // 动画结束后切换到循环移动状态 
     public class PlayerMoveStartState : PlayerBaseState
     {
-        // --- 状态内成员变量 ---
         private float _stateDuration;
         private MotionClipData _currentClipData;
-        private LocomotionState _startLocomotionState; // 记录进入时的运动状态
+        private LocomotionState _startLocomotionState;
 
-        // --- 常量 ---
         private const float SectorAngle = 45f;
         private const float HalfSectorAngle = SectorAngle / 2f;
 
-        /// <summary>
-        /// 状态构造函数。
-        /// </summary>
         public PlayerMoveStartState(PlayerController player) : base(player) { }
 
-        #region State Lifecycle
-
+        // 进入状态 选择对应方向的起步动画并注册结束回调
         public override void Enter()
         {
             _stateDuration = 0f;
@@ -39,13 +29,13 @@ namespace Characters.Player.States
 
             ChooseOptionsAndPlay(_currentClipData.Clip);
 
-            // 末相位仍然用于 Loop/Stop 的左右脚选择
+            // 末相位用于 Loop Stop 的左右脚选择
             data.ExpectedFootPhase = _currentClipData.EndPhase;
 
-            // End 回调：切换到 MoveLoop
+            // End 回调 切换到 MoveLoop
             AnimFacade.SetOnEndCallback(() =>
             {
-                // 应用自定义淡入时间（迁移为 PlayOptions）
+                // 应用自定义淡入时间
                 var nextOptions = data.CurrentLocomotionState switch
                 {
                     LocomotionState.Walk => config.LocomotionAnims.FadeInWalkLoopOptions,
@@ -59,6 +49,7 @@ namespace Characters.Player.States
             });
         }
 
+        // 状态逻辑 检测瞄准 空闲 跳跃等打断条件
         protected override void UpdateStateLogic()
         {
             if (data.IsAiming)
@@ -74,7 +65,7 @@ namespace Characters.Player.States
                 data.NextStatePlayOptions = config.LocomotionAnims.FadeInJumpOptions;
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
             }
-            // 如果运动状态在起步中途改变，切到循环状态让其处理状态转换
+            // 如果运动状态在起步中途改变 切到循环状态让其处理状态转换
             else if (data.CurrentLocomotionState != _startLocomotionState)
             {
                 data.NextStatePlayOptions = config.LocomotionAnims.FadeInLoopBreakInOptions;
@@ -82,26 +73,24 @@ namespace Characters.Player.States
             }
         }
 
+        // 物理更新 委托 MotionDriver 根据烘焙曲线驱动角色移动
         public override void PhysicsUpdate()
         {
             if (_currentClipData == null) return;
 
-            // 注意：stateTime 需要和烘焙曲线的时间轴一致。
-            // 这里使用 facade 的 CurrentTime（它已经包含 transition 的 speed 影响）。
             float stateTime = AnimFacade.CurrentTime;
 
-            // 委托：将所有复杂的物理计算交给 MotionDriver
+            // 委托 将所有复杂的物理计算交给 MotionDriver
             player.MotionDriver.UpdateMotion(_currentClipData, stateTime);
         }
 
+        // 退出状态 清理回调 中断曲线驱动 防止下一个起步瞬移
         public override void Exit()
         {
             AnimFacade.ClearOnEndCallback();
             _currentClipData = null;
 
-            //这里是为了保证 MoveStart 无论正常结束还是被打断退出，
-            //都会把上一次的曲线增量旋转缓存清掉，避免下次进入继承旧角度导致“瞬回”
-            //如果不清掉 玩家在movestart中途进入idle 下一次movestart会瞬移
+            // 清掉上一次的曲线增量旋转缓存 避免下次进入继承旧角度导致瞬回
             player.MotionDriver.InterruptClipDrivenMotion();
 
             float targetY = data.CurrentLocomotionState switch
@@ -112,19 +101,9 @@ namespace Characters.Player.States
                 _ => 0.7f
             };
             data.CurrentAnimBlendY = targetY;
-
         }
 
-        #endregion
-
-        #region Helper Methods
-
-        /// <summary>
-        /// 根据运动状态和本地移动角度，选择对应的起步动画。
-        /// </summary>
-        /// <param name="angle">本地角度 (-180 to 180)</param>
-        /// <param name="locomotionState">当前运动状态（Walk/Jog/Sprint）</param>
-        /// <returns>选中的动画数据</returns>
+        // 根据运动状态和本地移动角度 选择对应的起步动画
         private MotionClipData SelectClipForLocomotionState(float angle, LocomotionState locomotionState)
         {
             // 首先根据方向选择基础方向的动画
@@ -138,45 +117,43 @@ namespace Characters.Player.States
                 LocomotionState.Walk => walkClip,
                 LocomotionState.Jog => jogClip,
                 LocomotionState.Sprint => sprintClip,
-                _ => jogClip // 默认为 Jog
+                _ => jogClip
             };
         }
 
-        /// <summary>
-        /// 根据输入角度选择8个方向中的一个动画。
-        /// </summary>
+        // 根据输入角度选择8个方向中的一个动画
         private MotionClipData SelectDirectionClip(float angle, bool isWalk = false, bool isSprint = false)
         {
-            // 8-Way Directional Selection Logic
-            if (angle > -HalfSectorAngle && angle <= HalfSectorAngle) // Fwd
+            // 8方向量化选择 根据角度落在哪个45度扇区来决定方向
+            if (angle > -HalfSectorAngle && angle <= HalfSectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartFwd;
                 if (isSprint) return config.LocomotionAnims.SprintStartFwd;
-                return config.LocomotionAnims.RunStartFwd; // Jog (RunStart 对应 Jog)
+                return config.LocomotionAnims.RunStartFwd;
             }
 
-            if (angle > HalfSectorAngle && angle <= HalfSectorAngle + SectorAngle) // Fwd-Right
+            if (angle > HalfSectorAngle && angle <= HalfSectorAngle + SectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartFwdRight;
                 if (isSprint) return config.LocomotionAnims.SprintStartFwdRight;
                 return config.LocomotionAnims.RunStartFwdRight;
             }
 
-            if (angle > HalfSectorAngle + SectorAngle && angle <= HalfSectorAngle + SectorAngle * 2) // Right
+            if (angle > HalfSectorAngle + SectorAngle && angle <= HalfSectorAngle + SectorAngle * 2)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartRight;
                 if (isSprint) return config.LocomotionAnims.SprintStartRight;
                 return config.LocomotionAnims.RunStartRight;
             }
 
-            if (angle > HalfSectorAngle + SectorAngle * 2 && angle <= 180f - HalfSectorAngle) // Back-Right
+            if (angle > HalfSectorAngle + SectorAngle * 2 && angle <= 180f - HalfSectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartBackRight;
                 if (isSprint) return config.LocomotionAnims.SprintStartBackRight;
                 return config.LocomotionAnims.RunStartBackRight;
             }
 
-            // Back (covers +157.5 to 180 and -180 to -157.5)
+            // Back 覆盖 157.5 到 180 和 -180 到 -157.5
             if (angle > 180f - HalfSectorAngle || angle <= -180f + HalfSectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartBack;
@@ -184,33 +161,31 @@ namespace Characters.Player.States
                 return config.LocomotionAnims.RunStartBack;
             }
 
-            if (angle > -180f + HalfSectorAngle && angle <= -HalfSectorAngle - SectorAngle * 2) // Back-Left
+            if (angle > -180f + HalfSectorAngle && angle <= -HalfSectorAngle - SectorAngle * 2)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartBackLeft;
                 if (isSprint) return config.LocomotionAnims.SprintStartBackLeft;
                 return config.LocomotionAnims.RunStartBackLeft;
             }
 
-            if (angle > -HalfSectorAngle - SectorAngle * 2 && angle <= -HalfSectorAngle - SectorAngle) // Left
+            if (angle > -HalfSectorAngle - SectorAngle * 2 && angle <= -HalfSectorAngle - SectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartLeft;
                 if (isSprint) return config.LocomotionAnims.SprintStartLeft;
                 return config.LocomotionAnims.RunStartLeft;
             }
 
-            if (angle > -HalfSectorAngle - SectorAngle && angle <= -HalfSectorAngle) // Fwd-Left
+            if (angle > -HalfSectorAngle - SectorAngle && angle <= -HalfSectorAngle)
             {
                 if (isWalk) return config.LocomotionAnims.WalkStartFwdLeft;
                 if (isSprint) return config.LocomotionAnims.SprintStartFwdLeft;
                 return config.LocomotionAnims.RunStartFwdLeft;
             }
 
-            // 兜底：默认向前起步
+            // 兜底 默认向前起步
             if (isWalk) return config.LocomotionAnims.WalkStartFwd;
             if (isSprint) return config.LocomotionAnims.SprintStartFwd;
             return config.LocomotionAnims.RunStartFwd;
         }
-
-        #endregion
     }
 }

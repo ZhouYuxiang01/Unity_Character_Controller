@@ -5,9 +5,8 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.States
 {
-    /// <summary>
-    /// 玩家的"持续移动"循环状态。
-    /// </summary>
+    // 玩家持续移动循环状态 
+    // 负责持续播放移动循环动画 检测运动状态变化 脚相位切换 以及各类中断条件 
     public class PlayerMoveLoopState : PlayerBaseState
     {
         private LocomotionState _currentLocomotionState;
@@ -16,21 +15,19 @@ namespace Characters.Player.States
 
         public PlayerMoveLoopState(PlayerController player) : base(player) { }
 
-        #region State Lifecycle
-
+        // 进入状态 根据运动状态和脚相位选择循环动画
         public override void Enter()
         {
             _currentLocomotionState = data.CurrentLocomotionState;
 
-            // 1. 根据运动状态和脚相位选择动画
             var targetClip = SelectLoopAnimationForState(data.CurrentLocomotionState, data.ExpectedFootPhase);
 
             ChooseOptionsAndPlay(targetClip);
         }
 
+        // 状态逻辑 检测停止 翻越 跳跃 运动状态切换等
         protected override void UpdateStateLogic()
         {
-            // 使用权威的离散状态而非浮点检查
             if (data.CurrentLocomotionState == LocomotionState.Idle)
             {
                 data.NextStatePlayOptions = config.LocomotionAnims.FadeInStopWalkOptions;
@@ -67,46 +64,41 @@ namespace Characters.Player.States
                 return;
             }
 
-            // 运动状态变化 → 切换动画
             if (data.CurrentLocomotionState != _currentLocomotionState)
             {
                 SwitchLoopAnimation(data.CurrentLocomotionState);
             }
 
-            // 每帧更新脚相位
             UpdateFootPhase();
         }
 
+        // 物理更新 委托 MotionDriver 根据输入驱动运动
         public override void PhysicsUpdate()
         {
             player.MotionDriver.UpdateLocomotionFromInput();
         }
 
+        // 退出状态 清理回调 避免残留
         public override void Exit()
         {
-            // Loop 是持续状态，通常不绑 OnEnd。这里清一次避免残留。
             AnimFacade.ClearOnEndCallback();
         }
 
-        #endregion
-
-        #region Private Methods
-
-        /// <summary>根据运动状态和脚相位，选择对应的循环动画。</summary>
+        // 根据运动状态和脚相位 选择对应的循环动画
         private ClipTransition SelectLoopAnimationForState(LocomotionState locomotionState, FootPhase footPhase)
         {
             bool isLeft = footPhase == FootPhase.LeftFootDown;
 
             return locomotionState switch
             {
-                LocomotionState.Walk => isLeft ? config.LocomotionAnims. WalkLoopFwd_L : config.LocomotionAnims.WalkLoopFwd_R,
+                LocomotionState.Walk => isLeft ? config.LocomotionAnims.WalkLoopFwd_L : config.LocomotionAnims.WalkLoopFwd_R,
                 LocomotionState.Jog => isLeft ? config.LocomotionAnims.JogLoopFwd_L : config.LocomotionAnims.JogLoopFwd_R,
                 LocomotionState.Sprint => isLeft ? config.LocomotionAnims.SprintLoopFwd_L : config.LocomotionAnims.SprintLoopFwd_R,
-                _ => isLeft ? config.LocomotionAnims.JogLoopFwd_L : config.LocomotionAnims.JogLoopFwd_R, // 默认 Jog
+                _ => isLeft ? config.LocomotionAnims.JogLoopFwd_L : config.LocomotionAnims.JogLoopFwd_R,
             };
         }
 
-        /// <summary>切换到新的运动状态循环动画。</summary>
+        // 切换到新的运动状态循环动画 保持当前播放进度以实现无缝过渡
         private void SwitchLoopAnimation(LocomotionState newState)
         {
             float fromNormalizedTime = AnimFacade.CurrentNormalizedTime;
@@ -127,13 +119,12 @@ namespace Characters.Player.States
             AnimFacade.PlayTransition(targetClip, options);
         }
 
-        /// <summary>根据当前播放动画的时间，计算脚步循环相位（0~1）。</summary>
+        // 根据当前播放动画的时间 计算脚步循环相位 0 1
         private void UpdateFootPhase()
         {
             float normalizedTime = AnimFacade.CurrentNormalizedTime;
             float cycleTime = normalizedTime - Mathf.Floor(normalizedTime);
 
-            // 如果期望右脚着地，偏移 0.5
             if (data.ExpectedFootPhase == FootPhase.RightFootDown)
             {
                 cycleTime = (cycleTime + 0.5f) % 1.0f;
@@ -141,7 +132,5 @@ namespace Characters.Player.States
 
             data.CurrentRunCycleTime = cycleTime;
         }
-
-        #endregion
     }
 }

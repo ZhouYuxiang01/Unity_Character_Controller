@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Items.Data.Weapons
 {
-    [CreateAssetMenu(fileName = "New Ranged Weapon", menuName = "BBBNexus/Items/Ranged Weapon")]
+    [CreateAssetMenu(fileName = "New Ranged Weapon", menuName = "BBBNexus/Items/Weapons/Ranged Weapon")]
     public class RangedWeaponSO : EquippableItemSO
     {
         [Header("--- «π–µ∂¿”–≈‰÷√ (Ranged Stats) ---")]

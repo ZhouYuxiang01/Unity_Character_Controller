@@ -3,15 +3,9 @@ using UnityEngine;
 
 namespace Characters.Player.Processing
 {
-    /// <summary>
-    /// 视角旋转处理器（权威方向源生成器）。
-    /// 职责：
-    /// - 从 RuntimeData.LookInput（鼠标/右摇杆 delta）累加得到 ViewYaw/ViewPitch；
-    /// - 将 ViewYaw/ViewPitch 同步为 AuthorityYaw/AuthorityPitch，并计算 AuthorityRotation；
-    /// - 消费 LookInput（清零），防止后续系统重复叠加。
-    /// 
-    /// 备注：本处理器不直接旋转相机/角色；仅维护“权威参考系数据”。
-    /// </summary>
+    // 视角旋转处理器 它是权威方向源生成器 
+    // 负责从鼠标右摇杆增量累加得到 ViewYaw ViewPitch 
+    // 并同步为 AuthorityYaw AuthorityPitch 计算 AuthorityRotation
     public class ViewRotationProcessor
     {
         private readonly PlayerController _player;
@@ -25,17 +19,18 @@ namespace Characters.Player.Processing
             _config = player.Config;
         }
 
+        // 每帧消费输入增量并更新权威方向 
+        // 这个管线应该是除了有后坐力的物品之外的唯一权威方向来源！ 
         public void Update()
         {
-            // 读取并消费输入：权威方向源只应由这里维护（无论是否瞄准）。
+            // 读取并消费输入 权威方向源只应由这里维护
             Vector2 lookDelta = _data.LookInput;
             _data.LookInput = Vector2.zero;
 
             if (lookDelta.sqrMagnitude > 0.000001f)
             {
-                // 注意：LookInput 绑定的是 Mouse/delta（每帧增量）。
-                // 增量输入不应再乘 Time.deltaTime，否则会产生帧率相关的非线性缩放并引入抖动感。
-                _data.ViewYaw += lookDelta.x * _config.Core. LookSensitivity.x;
+                // 注意 LookInput 绑定的是 Mouse delta 每帧增量
+                _data.ViewYaw += lookDelta.x * _config.Core.LookSensitivity.x;
 
                 _data.ViewPitch += lookDelta.y * _config.Core.LookSensitivity.y;
                 _data.ViewPitch = Mathf.Clamp(_data.ViewPitch, _config.Core.PitchLimits.x, _config.Core.PitchLimits.y);
@@ -43,7 +38,7 @@ namespace Characters.Player.Processing
                 _data.ViewYaw = Mathf.Repeat(_data.ViewYaw, 360f);
             }
 
-            // 权威方向源：始终等于 View
+            // 权威方向源 始终等于 View
             _data.AuthorityYaw = _data.ViewYaw;
             _data.AuthorityPitch = _data.ViewPitch;
             _data.AuthorityRotation = Quaternion.Euler(_data.AuthorityPitch, _data.AuthorityYaw, 0f);

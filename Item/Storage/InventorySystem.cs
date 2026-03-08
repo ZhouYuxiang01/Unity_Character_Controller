@@ -6,55 +6,62 @@ using UnityEngine;
 
 namespace Items.Core
 {
-    /// <summary>
-    /// 通用背包系统（新 ItemInstance 体系）。
-    /// - 内部存储 ItemInstance（或其子类）。
-    /// - 堆叠依据 ItemDefinitionSO.MaxStack 与 ItemInstance.CurrentAmount。
-    /// </summary>
+    // 通用背包系统 管理物品的存储 堆叠 查询 
+    // 支持自动堆叠 自动分割 单独操作等高级特性 
+    // 内部存储的是实例 不直接存储 SO 确保运行时数据独立 
     public class InventorySystem
     {
+        // 背包槽位数组 每个槽位存储一个物品实例或空 
         private readonly ItemInstance[] _items;
+        // 背包容量 固定值 创建后不可改变 
         private readonly int _capacity;
 
+        // 背包发生变化时的事件 UI 或其他系统可订阅以刷新显示 
         public event Action OnInventoryUpdated;
 
+        // 初始化背包 指定容量 
         public InventorySystem(int capacity)
         {
             _capacity = capacity;
+            // 创建指定大小的槽位数组 初始全部为空 
             _items = new ItemInstance[capacity];
         }
 
-        /// <summary>
-        /// 尝试添加一个物品实例到背包（自动寻找空位或堆叠）
-        /// 支持将大数量实例拆分到多个槽位（原子性：若没有足够空位则不修改背包）
-        /// </summary>
+        // 尝试添加物品到背包 支持自动堆叠与分割 
+        // 原子操作 如果空间不足则整个操作都不执行 不会产生部分添加的情况 
         public bool TryAdd(ItemInstance instance)
         {
+            // 验证输入 物品实例必须有效且数量大于零 
             if (instance == null || instance.CurrentAmount <= 0) return false;
 
             var definition = instance.BaseData;
             int remaining = instance.CurrentAmount;
 
-            // --- 1) 先模拟堆叠，计算剩余数量（不修改数据结构） ---
+            // 第一阶段 模拟堆叠 不修改数据结构 只计算能否通过堆叠容纳 
+            // 这用于判断是否需要额外的空槽位 
             if (definition.MaxStack > 1)
             {
+                // 遍历所有槽位 寻找相同定义的物品进行堆叠 
                 for (int i = 0; i < _capacity && remaining > 0; i++)
                 {
                     var existing = _items[i];
+                    // 跳过空槽位或不同定义的物品 
                     if (existing == null || existing.BaseData != definition) continue;
 
+                    // 计算该槽位还有多少空间 
                     int space = Mathf.Max(0, existing.BaseData.MaxStack - existing.CurrentAmount);
                     if (space <= 0) continue;
 
+                    // 计算本次可堆叠的数量 
                     int add = Mathf.Min(space, remaining);
                     remaining -= add;
                 }
             }
 
-            // 如果全部可以通过堆叠解决，直接提交（堆叠阶段会在提交时真正修改）
+            // 如果全部可以通过堆叠解决 则直接提交 
             if (remaining <= 0)
             {
-                // 提交：真正把数量堆入已有堆栈
+                // 提交 真正把数量堆入已有堆栈 
                 int toStack = instance.CurrentAmount;
                 for (int i = 0; i < _capacity && toStack > 0; i++)
                 {
@@ -69,39 +76,44 @@ namespace Items.Core
                     toStack -= add;
                 }
 
-                // 原实例已全部消耗
+                // 原实例已全部消耗 
                 instance.CurrentAmount = 0;
                 NotifyUpdate();
                 return true;
             }
 
-            // --- 2) 计算空槽数量并判断是否有足够槽位来放下剩余数量 ---
+            // 第二阶段 计算空槽数量 判断是否有足够槽位来放下剩余数量 
             int emptyCount = 0;
             for (int i = 0; i < _capacity; i++)
             {
                 if (_items[i] == null) emptyCount++;
             }
 
+            // 计算需要的槽位数 
             int requiredSlots;
             if (definition.MaxStack > 1)
             {
-                requiredSlots = (remaining + definition.MaxStack - 1) / definition.MaxStack; // ceil
+                // 向上取整 计算需要几个槽位 
+                requiredSlots = (remaining + definition.MaxStack - 1) / definition.MaxStack;
             }
             else
             {
-                requiredSlots = remaining; // 每个物品占一个槽
+                // 无堆叠物品 每个占一个槽 
+                requiredSlots = remaining;
             }
 
+            // 检查是否有足够空位 
             if (emptyCount < requiredSlots)
             {
                 Debug.LogWarning("[InventorySystem] 背包空位不足，无法添加整个物品实例。");
-                return false; // 原子：不做任何修改
+                // 不做任何修改就返回失败 
+                return false;
             }
 
-            // --- 3) 提交：先堆叠到已有槽，再把剩余拆分到空槽 ---
+            // 第三阶段 提交 先堆叠到已有槽 再把剩余拆分到空槽 
             remaining = instance.CurrentAmount;
 
-            // 堆叠提交
+            // 堆叠提交 
             if (definition.MaxStack > 1)
             {
                 for (int i = 0; i < _capacity && remaining > 0; i++)
@@ -118,31 +130,33 @@ namespace Items.Core
                 }
             }
 
-            // 拆分到空槽
+            // 拆分到空槽 
             bool originalPlaced = false;
             for (int i = 0; i < _capacity && remaining > 0; i++)
             {
+                // 跳过非空槽位 
                 if (_items[i] != null) continue;
 
+                // 计算本次放入多少 
                 int put = definition.MaxStack > 1 ? Mathf.Min(remaining, definition.MaxStack) : 1;
 
                 if (!originalPlaced)
                 {
-                    // 将原始实例放入第一个空槽，保留其 InstanceID
+                    // 第一个空槽放入原始实例 保留其 InstanceID 
                     instance.CurrentAmount = put;
                     _items[i] = instance;
                     originalPlaced = true;
                 }
                 else
                 {
-                    // 创建新的实例以填充剩余堆栈
+                    // 后续空槽创建新实例 
                     _items[i] = new ItemInstance(definition, put);
                 }
 
                 remaining -= put;
             }
 
-            // 提交成功：剩余应为 0
+            // 验证 剩余应该为零 
             if (remaining != 0)
             {
                 Debug.LogWarning("[InventorySystem] 意外：拆分后仍有剩余，背包状态可能不一致。");
@@ -152,11 +166,10 @@ namespace Items.Core
             return true;
         }
 
-        /// <summary>
-        /// 移除指定槽位的物品（完全移除）
-        /// </summary>
+        // 完全移除指定槽位的物品 
         public ItemInstance RemoveAt(int slotIndex)
         {
+            // 范围检查 
             if (slotIndex < 0 || slotIndex >= _capacity) return null;
             var item = _items[slotIndex];
             _items[slotIndex] = null;
@@ -164,10 +177,8 @@ namespace Items.Core
             return item;
         }
 
-        /// <summary>
-        /// 将物品实例放置到指定槽位
-        /// 如果该槽位已有物品，则替换并返回原物品
-        /// </summary>
+        // 将物品实例放置到指定槽位 
+        // 如果槽位已有物品 则替换并返回原物品 
         public ItemInstance SetAt(int slotIndex, ItemInstance instance)
         {
             if (slotIndex < 0 || slotIndex >= _capacity) return instance;
@@ -177,25 +188,30 @@ namespace Items.Core
             return oldItem;
         }
 
+        // 获取指定槽位的物品 
         public ItemInstance GetAt(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= _capacity) return null;
             return _items[slotIndex];
         }
 
+        // 按定义移除指定数量的物品 从后向前遍历 
         public void Remove(ItemDefinitionSO definition, int amount = 1)
         {
             if (definition == null || amount <= 0) return;
 
+            // 从后向前遍历 确保优先清空最后的槽位 
             for (int i = _capacity - 1; i >= 0 && amount > 0; i--)
             {
                 var inst = _items[i];
                 if (inst == null || inst.BaseData != definition) continue;
 
+                // 计算本次应该移除多少 
                 int toRemove = Mathf.Min(amount, inst.CurrentAmount);
                 inst.CurrentAmount -= toRemove;
                 amount -= toRemove;
 
+                // 数量为零则清空槽位 
                 if (inst.CurrentAmount <= 0)
                 {
                     _items[i] = null;
@@ -205,11 +221,13 @@ namespace Items.Core
             NotifyUpdate();
         }
 
+        // 检查是否有足够的指定物品 
         public bool Has(ItemDefinitionSO definition, int amount = 1)
         {
             return GetCount(definition) >= amount;
         }
 
+        // 获取指定定义的物品总数 跨所有槽位汇总 
         public int GetCount(ItemDefinitionSO definition)
         {
             if (definition == null) return 0;
@@ -223,6 +241,7 @@ namespace Items.Core
             return sum;
         }
 
+        // 查找指定定义的第一个物品实例 
         public ItemInstance FindFirst(ItemDefinitionSO definition)
         {
             if (definition == null) return null;
@@ -235,11 +254,13 @@ namespace Items.Core
             return null;
         }
 
+        // 获取所有非空槽位的物品列表 
         public IReadOnlyList<ItemInstance> GetAllItems()
         {
             return _items.Where(i => i != null).ToList();
         }
 
+        // 通知监听者背包已更新 触发 UI 刷新等后续动作 
         private void NotifyUpdate()
         {
             OnInventoryUpdated?.Invoke();

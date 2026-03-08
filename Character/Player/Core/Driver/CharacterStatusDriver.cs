@@ -4,89 +4,84 @@ using UnityEngine;
 
 namespace Characters.Player.Core
 {
-    /// <summary>
-    /// 角色状态 Driver（被动）。
-    /// 职责：根据 PlayerRuntimeData 的"当前状态"被动驱动数值型属性变化。
-    /// 例如：根据 CurrentLocomotionState 消耗/恢复体力；后续可在此扩展生命值、护盾、饥饿等。
-    /// 
-    /// 体力管理逻辑：
-    /// - Sprint：快速消耗（StaminaDrainRate）
-    /// - Jog：正常恢复（StaminaRegenRate）
-    /// - Walk：加速恢复（StaminaRegenRate * WalkStaminaRegenMult）
-    /// - Idle：加速恢复（StaminaRegenRate * WalkStaminaRegenMult）
-    /// </summary>
+    // 角色数值驱动器 属于纯粹的被动监听层 
+    // 它负责盯着黑板里的当前状态 默默计算体力值的扣除与恢复 
+    // 这种数值逻辑必须跟状态机解耦 以后加生命值直接在这里扩充 
     public class CharacterStatusDriver
     {
+        // 运行时黑板引用 存储当前运动状态与体力残余 
         private readonly PlayerRuntimeData _data;
+        // 离线配置注入 拿到体力上限与恢复速率等关键参数 
         private readonly PlayerSO _config;
 
-        // 构造改为接收数据与配置，避免直接依赖 PlayerController 类型，减少耦合。
+        // 构造函数接收数据与配置 绝对不要反向依赖控制器 
+        // 这样即使换个项目 只要黑板格式对 逻辑就能直接搬走 
         public CharacterStatusDriver(PlayerRuntimeData data, PlayerSO config)
         {
             _data = data;
             _config = config;
         }
 
+        // 核心函数 
         public void Update()
         {
             UpdateStamina();
-            // TODO: UpdateHealth();
+            // 以后在这里挂载生命值等的被动更新逻辑 
         }
 
-        /// <summary>
-        /// 被动更新体力。根据当前的移动状态决定消耗或恢复速率。
-        /// </summary>
+        // 处理黑板中的体力更新 
         private void UpdateStamina()
         {
+            // 根据意图管线确定的状态 获取当前的体力变化率 
             float drainRate = GetStaminaDrainRateForState(_data.CurrentLocomotionState);
-            
+
             if (drainRate > 0)
             {
-                // 消耗模式：体力减少
+                // 进入消耗阶段 体力值随时间流逝而减少 
                 _data.CurrentStamina -= drainRate * Time.deltaTime;
 
                 if (_data.CurrentStamina <= 0f)
                 {
+                    // 体力枯竭 触发疲劳标记 限制部分高耗能意图 
                     _data.CurrentStamina = 0f;
                     _data.IsStaminaDepleted = true;
                 }
             }
             else if (drainRate < 0)
             {
-                // 恢复模式：体力增加
+                // 进入恢复阶段 速率取反实现数值自动增长 
                 _data.CurrentStamina += (-drainRate) * Time.deltaTime;
 
-                // 恢复到阈值以上解除耗尽标记
+                // 恢复到配置注入的阈值以上 才能解除枯竭标记 
+                // 别让玩家刚回一点气就能开冲 (不然会抽的很鬼畜） 
                 if (_data.CurrentStamina > _config.Core.MaxStamina * _config.Core.StaminaRecoverThreshold)
                 {
                     _data.IsStaminaDepleted = false;
                 }
             }
-            // 如果 drainRate == 0，体力保持不变（静止状态）
 
-            // 限制体力值范围
+            // 强制限制体力范围 保证黑板数据的绝对安全 
             _data.CurrentStamina = Mathf.Clamp(_data.CurrentStamina, 0f, _config.Core.MaxStamina);
         }
 
-        /// <summary>
-        /// 根据运动状态获取体力消耗速率。
-        /// 正值表示消耗，负值表示恢复，0 表示不变。
-        /// </summary>
+        // 状态映射函数 将抽象的运动状态转化为具体的物理变化率 
+        // 这里把消耗定义为正数 恢复定义为负数 
         private float GetStaminaDrainRateForState(LocomotionState state)
         {
             return state switch
             {
-                // Sprint：快速消耗体力
+                // 疾跑状态 按照配置注入的速率进行高额消耗 
                 LocomotionState.Sprint => _config.Core.StaminaDrainRate,
 
-                // Walk：加速恢复（恢复速率为负，在 UpdateStamina 中取反使用）
+                // 走路状态  恢复速率会有额外加成系数 
                 LocomotionState.Walk => -_config.Core.StaminaRegenRate * _config.Core.WalkStaminaRegenMult,
 
-                // Jog 和 Idle：正常恢复
+                // 慢跑与待机 保持配置里的标准恢复节奏 
                 LocomotionState.Jog => -_config.Core.StaminaRegenRate,
                 LocomotionState.Idle => -_config.Core.StaminaRegenRate,
 
-                _ => 0f // 未知状态，体力不变
+                // 逻辑死区状态 体力值保持静止不动 
+                _ => 0f
             };
         }
     }

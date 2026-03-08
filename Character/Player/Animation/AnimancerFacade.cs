@@ -1,16 +1,19 @@
-﻿// 文件路径: Characters/Player/Animation/AnimancerFacade.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Animancer;
 
 namespace Characters.Player.Animation
 {
+    // 动画外观层 它是表现层的核心 负责转接动画意图 
     [RequireComponent(typeof(AnimancerComponent))]
     public class AnimancerFacade : MonoBehaviour, IAnimationFacade
     {
+        // 插件核心组件引用 它是实际干活的底层驱动 
         private AnimancerComponent _animancer;
 
-        // 用字典分层管理结束回调 彻底杜绝多层回调串线
+        // 多层回调字典 这是为了解决多层级动作串线的终极方案 
+        // 每个动画层都有自己的独立回调槽位 互不干扰 
+        // 别随便改这里的逻辑 不然换弹动作可能会卡在最后一帧 
         private Dictionary<int, System.Action> _layerOnEndActions = new Dictionary<int, System.Action>();
 
         private void Awake()
@@ -18,9 +21,10 @@ namespace Characters.Player.Animation
             _animancer = GetComponent<AnimancerComponent>();
         }
 
+        // 脚本禁用时必须强制清空所有层级的回调 
+        // 这是为了防止角色销毁后 内存里还挂着没跑完的动画逻辑 
         private void OnDisable()
         {
-            // 清理所有层的回调
             foreach (var layerIndex in _layerOnEndActions.Keys)
             {
                 ClearOnEndCallback(layerIndex);
@@ -33,6 +37,7 @@ namespace Characters.Player.Animation
             if (animancerComponent != null) _animancer = animancerComponent;
         }
 
+        // 播放基础动画 先清理老回调再注入新动作 
         public void PlayClip(AnimationClip clip, AnimPlayOptions options)
         {
             if (clip == null) return;
@@ -41,15 +46,20 @@ namespace Characters.Player.Animation
             ClearOnEndCallback(layerIndex);
             var layer = GetLayerOrFallback(layerIndex);
 
+            // 根据配置决定是瞬间切换还是淡入 
             var state = options.FadeDuration >= 0
                 ? layer.Play(clip, options.FadeDuration)
                 : layer.Play(clip);
 
             state.AssertOwnership(this);
+            // 注入播放速率 确保动画跟得上意图管线的计算速度 
             ApplyOptions(state, options);
+            // 重新绑定黑板注入的结束指令 
             RebindOnEndIfNeeded(layerIndex, state);
         }
 
+        // 播放混合树或序列动画 
+        // 核心流程跟播放基础动画一样 确保逻辑闭环 
         public void PlayTransition(object transitionObj, AnimPlayOptions options)
         {
             var transition = transitionObj as ITransition;
@@ -68,12 +78,15 @@ namespace Characters.Player.Animation
             RebindOnEndIfNeeded(layerIndex, state);
         }
 
-        // ✨ 核心修复：精准获取目标层级的 CurrentState，而不是被全局变量误导！
+        // 核心逻辑 它是让角色跑动起来不再滑步的关键 
+        // 负责把意图管线算出来的摇杆矢量 喂给动画混合树 
+        // 这里必须精准获取当前激活的层级状态 拿错了角色就会动作漂移 
         public void SetMixerParameter(Vector2 parameter, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
             if (state == null) return;
 
+            // 自动匹配混合空间维度 注入黑板里的运动参数 
             if (state is MixerState<Vector2> mixer2D)
             {
                 mixer2D.Parameter = parameter;
@@ -84,6 +97,7 @@ namespace Characters.Player.Animation
             }
         }
 
+        // 注册状态机跳转的结束指令 
         public void SetOnEndCallback(System.Action onEndAction, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
@@ -95,6 +109,8 @@ namespace Characters.Player.Animation
                 return;
             }
 
+            // 包装一层保护逻辑 确保回调跑完就自动爆炸
+            // 绝对不能让过期的回调留在下一帧 否则逻辑会彻底乱套 
             System.Action wrapper = null;
             wrapper = () =>
             {
@@ -111,6 +127,7 @@ namespace Characters.Player.Animation
             if (state != null) state.Events(this).OnEnd = wrapper;
         }
 
+        // 动态调权重 实现上半身动作和面部表情叠加
         public void SetLayerWeight(int layerIndex, float weight, float fadeDuration = 0f)
         {
             var layer = GetLayerOrFallback(layerIndex);
@@ -120,12 +137,14 @@ namespace Characters.Player.Animation
             else layer.Weight = weight;
         }
 
+        // 注入动画遮罩 决定当前层级能控制哪些骨头 
         public void SetLayerMask(int layerIndex, AvatarMask mask)
         {
             var layer = GetLayerOrFallback(layerIndex);
             if (layer != null) layer.Mask = mask;
         }
 
+        // 强行清理指定层的事件流 这是一个极其重要的防御手段 
         public void ClearOnEndCallback(int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
@@ -137,6 +156,7 @@ namespace Characters.Player.Animation
             _layerOnEndActions.Remove(layerIndex);
         }
 
+        // 在指定时间点插入逻辑反馈 
         public void AddCallback(float normalizedTime, System.Action callback, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
@@ -144,6 +164,7 @@ namespace Characters.Player.Animation
             state.Events(this).Add(normalizedTime, callback);
         }
 
+        // 如果状态刷新了 就得重新检查有没有遗留的回调需要链接上去 
         private void RebindOnEndIfNeeded(int layerIndex, AnimancerState state)
         {
             if (state == null) return;
@@ -159,6 +180,7 @@ namespace Characters.Player.Animation
             catch { }
         }
 
+        // 把烘焙器离线算好的物理参数 注入到当前动画状态里 
         private static void ApplyOptions(AnimancerState state, AnimPlayOptions options)
         {
             if (state == null) return;
@@ -166,6 +188,7 @@ namespace Characters.Player.Animation
             if (options.NormalizedTime >= 0) state.NormalizedTime = options.NormalizedTime;
         }
 
+        // 越界安全检查 如果层级索引乱填 就强制退回到基础层 
         private AnimancerLayer GetLayerOrFallback(int layerIndex)
         {
             var layers = _animancer.Layers;
@@ -174,11 +197,10 @@ namespace Characters.Player.Animation
             return layers[0];
         }
 
-        // 兼容旧属性，默认只读取基础移动层 (Layer 0) 的时间
+        // 基础层当前的播放进度 它是意图管线判断动作是否播完的重要依据 
         public float CurrentTime => GetLayerTime(0);
         public float CurrentNormalizedTime => GetLayerNormalizedTime(0);
 
-        // 新增分层读取方法
         public float GetLayerTime(int layerIndex)
             => GetLayerOrFallback(layerIndex).CurrentState?.Time ?? 0f;
 
