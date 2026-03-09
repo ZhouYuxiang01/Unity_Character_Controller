@@ -164,24 +164,31 @@ namespace Characters.Player.Processing
                     Vector3 ledgeEdge = new Vector3(wallHit.point.x, ledgeHit.point.y, wallHit.point.z);
                     info.LedgePoint = ledgeEdge;
 
-                    // 关键改动 根据角色与墙体的相对位置调整手部方向
-                    // 计算从墙沿指向角色位置的方向向量
-                    Vector3 charToWall = (ledgeEdge - root.position).normalized;
-                    
-                    // 以墙法线和角色指向为基准 使用右手法则计算右方向
-                    // 这样可以确保无论角色从哪个方向靠近墙体 手部方向始终保持一致
-                    Vector3 rightDir = Vector3.Cross(Vector3.up, wallHit.normal).normalized;
-                    
-                    // 如果角色在墙的右侧 需要翻转右方向 使手部方向与角色相对位置匹配
-                    float dotProduct = Vector3.Dot(charToWall, rightDir);
-                    if (dotProduct < 0)
+                    // 关键点：手部左右的“正方向”必须稳定
+                    // 之前用 (ledge->root) 与 rightDir 点乘做翻转 在某些角度/贴墙位置会抖动导致左右手互换
+                    // 这里改成用“角色右方向”作为符号判定 只要角色朝向不突变 左右就不会反掉
+
+                    // 用墙法线构建横向轴：沿墙面水平方向（避免 Y 分量污染）
+                    Vector3 wallNormalFlat = new Vector3(wallHit.normal.x, 0f, wallHit.normal.z);
+                    if (wallNormalFlat.sqrMagnitude < 0.0001f) return false;
+
+                    // rightDir = wallRight（沿墙面的右方向）
+                    Vector3 rightDir = Vector3.Cross(Vector3.up, wallNormalFlat).normalized;
+
+                    // 让 rightDir 的符号与角色的右方向一致 这样左/右手永远不会互换
+                    Vector3 characterRight = new Vector3(root.right.x, 0f, root.right.z).normalized;
+                    if (characterRight.sqrMagnitude > 0.0001f)
                     {
-                        rightDir = -rightDir;
+                        if (Vector3.Dot(rightDir, characterRight) < 0f)
+                            rightDir = -rightDir;
                     }
 
-                    info.LeftHandPos = ledgeEdge + rightDir * (_config.Vaulting.VaultHandSpread / 2f);
-                    info.RightHandPos = ledgeEdge - rightDir * (_config.Vaulting.VaultHandSpread / 2f);
-                    info.HandRot = Quaternion.LookRotation(-wallHit.normal, Vector3.up);
+                    float halfSpread = _config.Vaulting.VaultHandSpread * 0.5f;
+                    info.LeftHandPos = ledgeEdge - rightDir * halfSpread;
+                    info.RightHandPos = ledgeEdge + rightDir * halfSpread;
+
+                    // 手部朝向：沿着墙面法线的反方向（朝向墙）
+                    info.HandRot = Quaternion.LookRotation(-wallNormalFlat.normalized, Vector3.up);
 
                     return true;
                 }

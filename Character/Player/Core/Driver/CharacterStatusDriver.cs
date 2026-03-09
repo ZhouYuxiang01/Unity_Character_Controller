@@ -6,7 +6,7 @@ namespace Characters.Player.Core
 {
     // 角色数值驱动器 属于纯粹的被动监听层 
     // 它负责盯着黑板里的当前状态 默默计算体力值的扣除与恢复 
-    // 这种数值逻辑必须跟状态机解耦 以后加生命值直接在这里扩充 
+    // 这种数值逻辑必须跟状态机解耦  
     public class CharacterStatusDriver
     {
         // 运行时黑板引用 存储当前运动状态与体力残余 
