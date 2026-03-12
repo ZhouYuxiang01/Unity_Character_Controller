@@ -121,7 +121,7 @@ namespace Items.Logic.Weapons
                 return;
 
             // 检测射击按键的上升沿 只在本帧按下时触发 不是按住 
-            bool fire = _player.InputReader != null && _player.InputReader.Current.FireHeld;
+            bool fire = _player.RuntimeData != null && _player.RuntimeData.WantsToFire;
             bool fireDown = fire && !_lastFireInput;
             _lastFireInput = fire;
 

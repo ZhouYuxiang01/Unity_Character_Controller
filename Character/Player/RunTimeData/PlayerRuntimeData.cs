@@ -4,81 +4,6 @@ using Characters.Player.Animation;
 
 namespace Characters.Player.Data
 {
-    #region 数据结构与枚举
-
-    /// <summary>
-    /// 离散化的角色意图方向（8方向）。
-    /// 这是将连续的摇杆输入量化成8个离散方向 用于选择对应的启动动画与根运动方向
-    /// </summary>
-    public enum DesiredDirection
-    {
-        None,
-        Forward,
-        Backward,
-        Left,
-        Right,
-        ForwardLeft,
-        ForwardRight,
-        BackwardLeft,
-        BackwardRight
-    }
-
-    /// <summary>
-    /// 翻越障碍物的信息结构 存储从检测射线得到的所有IK与动画驱动数据
-    /// </summary>
-    public struct VaultObstacleInfo
-    {
-        [Tooltip("此次翻越数据是否有效 只有所有检测都通过才能设为true")]
-        public bool IsValid;
-
-        [Tooltip("墙面的击中点 世界坐标 用于判断手部IK目标")]
-        public Vector3 WallPoint;
-
-        [Tooltip("墙面法线方向 用于计算IK手部的朝向")]
-        public Vector3 WallNormal;
-
-        [Tooltip("墙的高度 米 用于选择低翻越还是高翻越")]
-        public float Height;
-
-        [Tooltip("墙顶的着陆点 世界坐标 角色翻过去后会落在这个位置")]
-        public Vector3 LedgePoint;
-
-        [Tooltip("左手IK目标点 世界坐标 动画播放时会持续驱动左手向这里靠近")]
-        public Vector3 LeftHandPos;
-
-        [Tooltip("右手IK目标点 世界坐标")]
-        public Vector3 RightHandPos;
-
-        [Tooltip("手部IK的朝向 确保两只手指向同一个方向")]
-        public Quaternion HandRot;
-
-        [Tooltip("翻越后的预期着陆点 用于最终的根运动变形修正")]
-        public Vector3 ExpectedLandPoint;
-    }
-
-    /// <summary>
-    /// 下半身的运动状态分类 控制动画混合树的输入源
-    /// </summary>
-    public enum LocomotionState
-    {
-        Idle = 0,   // 静止待机
-        Walk = 1,   // 行走 低速
-        Jog = 2,    // 慢跑 中速
-        Sprint = 3, // 冲刺 高速
-    }
-
-    /// <summary>
-    /// 二段跳的方向分类 决定空中第二次起跳的轨迹
-    /// </summary>
-    public enum DoubleJumpDirection
-    {
-        Up = 0,   // 竖直向上跳
-        Left = 1, // 向左跳
-        Right = 2, // 向右跳
-    }
-
-    #endregion
-
     /// <summary>
     /// 玩家运行时数据容器 - 整个控制流程的信息交汇点
     /// 负责在意图管线 物理驱动 动画系统 IK系统之间传递数据
@@ -172,8 +97,18 @@ namespace Characters.Player.Data
 
         [Header("装备物品 (Item - Runtime) - 背包与装备意图的桥梁")]
 
+        [Tooltip("快捷栏装备意图：-1表示没有意图，0~4表示想要装备对应槽位的物品")]
+        public int WantsToEquipHotbarIndex = -1;
         [Tooltip("当前装备的物品实例 包含定义与堆叠数量 为null表示空手 这是装备驱动唯一的数据源")]
         public ItemInstance CurrentItem;
+        /// <summary>
+        /// 当前用于执行"指向"动作的基准Transform
+        /// 例如：持枪时这是枪口 手电筒时这是灯泡 空手时通常是头部
+        /// IK系统会让这个Transform精确对准TargetAimPoint
+        /// 这样保证了不同武器都能准确指向玩家的准星
+        /// </summary>
+        [Tooltip("当前武器的指向基准点 transform 通常是枪口或手电筒灯泡 为null时默认使用头部")]
+        public Transform CurrentAimReference;
 
         #endregion
 
@@ -226,6 +161,12 @@ namespace Characters.Player.Data
 
         [Tooltip("本帧是否进入下落状态 由MovementParameterProcessor根据空中时间计算 触发下落动画与表现")]
         public bool WantsToFall;
+
+        [Space]
+        [Header("开火意图 (Fire Intent) - 射击行为的触发标志")]
+
+        [Tooltip("本帧是否想要开火 由瞄准与开火意图处理器根据左鼠标/开火按钮按下时设置 一帧周期")]
+        public bool WantsToFire;
 
         [Space]
         [Header("表情意图 (Expression Intent) - 脸部表情的单帧触发")]
@@ -293,7 +234,9 @@ namespace Characters.Player.Data
 
         [Tooltip("下落高度等级 0~4级 用于选择对应的着陆缓冲动画 级数越高下落伤害越大")]
         public int FallHeightLevel;
+        #endregion
 
+        #region
         /// <summary>
         /// 新的播放选项覆写 包含淡入时间 播放速率 起始位置 IK同步等参数
         /// 如果设置此项 下次播放动画时会用这里的参数而不是默认配置
@@ -304,11 +247,9 @@ namespace Characters.Player.Data
 
         [Tooltip("上半身状态播放选项覆写 独立于下半身")]
         public AnimPlayOptions? NextUpperBodyStatePlayOptions = null;
-
         #endregion
 
-        #region IK & EQUIPMENT - 装备与肢体对齐 - 逆运动学系统的驱动
-
+        #region
         [Header("IK驱动 (IK Goals) - 肢体对齐的目标")]
 
         [Tooltip("是否启用左手IK true时左手会向LeftHandGoal靠近")]
@@ -330,17 +271,6 @@ namespace Characters.Player.Data
         public Vector3 LookAtPosition;
 
         #endregion
-
-        [Header("装备与指向基准 (Item & Aiming Reference) - 武器系统的参考点")]
-
-        /// <summary>
-        /// 当前用于执行"指向"动作的基准Transform
-        /// 例如：持枪时这是枪口 手电筒时这是灯泡 空手时通常是头部
-        /// IK系统会让这个Transform精确对准TargetAimPoint
-        /// 这样保证了不同武器都能准确指向玩家的准星
-        /// </summary>
-        [Tooltip("当前武器的指向基准点 transform 通常是枪口或手电筒灯泡 为null时默认使用头部")]
-        public Transform CurrentAimReference;
 
         #region ATTRIBUTES & TRACKING - 数值与周期追踪 - 游戏状态的记录
 
@@ -385,6 +315,7 @@ namespace Characters.Player.Data
             WantsToRoll = false;
             WantsLowVault = false;
             WantsHighVault = false;
+            WantsToFire = false; // 清理开火意图
 
             // Expression intents (one-frame)
             WantsExpression1 = false;

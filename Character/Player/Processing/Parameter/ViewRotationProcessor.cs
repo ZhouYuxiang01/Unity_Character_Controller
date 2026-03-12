@@ -3,42 +3,36 @@ using UnityEngine;
 
 namespace Characters.Player.Processing
 {
-    // 视角旋转处理器 它是权威方向源生成器 
-    // 负责从鼠标右摇杆增量累加得到 ViewYaw ViewPitch 
-    // 并同步为 AuthorityYaw AuthorityPitch 计算 AuthorityRotation
     public class ViewRotationProcessor
     {
-        private readonly PlayerController _player;
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
 
-        public ViewRotationProcessor(PlayerController player)
+        public ViewRotationProcessor(PlayerRuntimeData data, PlayerSO config)
         {
-            _player = player;
-            _data = player.RuntimeData;
-            _config = player.Config;
+            _data = data;
+            _config = config;
         }
 
-        // 每帧消费输入增量并更新权威方向 
-        // 这个管线应该是除了有后坐力的物品之外的唯一权威方向来源！ 
-        public void Update()
+        public void Update(in ProcessedInputData input)
         {
-            // 读取并消费输入 权威方向源只应由这里维护
-            Vector2 lookDelta = _data.LookInput;
-            _data.LookInput = Vector2.zero;
+            // 拿到这一帧的原始增量 (Mouse Delta 或 摇杆输入)
+            Vector2 lookInput = input.Look;
 
-            if (lookDelta.sqrMagnitude > 0.000001f)
+            if (lookInput.sqrMagnitude > 0.000001f)
             {
-                // 注意 LookInput 绑定的是 Mouse delta 每帧增量
-                _data.ViewYaw += lookDelta.x * _config.Core.LookSensitivity.x;
+                // 【核心修复】：直接把增量累加进 Yaw 和 Pitch 里！绝对不要去减去 lastLook！
+                _data.ViewYaw += lookInput.x * _config.Core.LookSensitivity.x;
+                _data.ViewPitch += lookInput.y * _config.Core.LookSensitivity.y;
 
-                _data.ViewPitch += lookDelta.y * _config.Core.LookSensitivity.y;
+                // 钳制 Pitch (上下看) 并让 Yaw (左右转) 在 360 度内循环
                 _data.ViewPitch = Mathf.Clamp(_data.ViewPitch, _config.Core.PitchLimits.x, _config.Core.PitchLimits.y);
-
                 _data.ViewYaw = Mathf.Repeat(_data.ViewYaw, 360f);
             }
 
-            // 权威方向源 始终等于 View
+            // 更新黑板
+            _data.LookInput = lookInput;
+            _data.MoveInput = input.Move;
             _data.AuthorityYaw = _data.ViewYaw;
             _data.AuthorityPitch = _data.ViewPitch;
             _data.AuthorityRotation = Quaternion.Euler(_data.AuthorityPitch, _data.AuthorityYaw, 0f);

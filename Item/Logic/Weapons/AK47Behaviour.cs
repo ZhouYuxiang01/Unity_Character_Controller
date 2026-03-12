@@ -236,9 +236,11 @@ namespace Items.Logic.Weapons
                 _wasAiming = isAiming;
             }
 
-            // 检测射击按键 
-            bool isFiring = _player != null && _player.InputReader != null && _player.InputReader.Current.FireHeld;
-
+            // 检测射击按键 - 从运行时数据中读取开火意图
+            bool isFiring = _player != null && _player.RuntimeData != null && 
+                           _player.RuntimeData.CurrentItem == _instance && 
+                           _player.RuntimeData.WantsToFire;
+            
             // 仅在瞄准时才允许开火 确保瞄准的必要性 
             if (isAiming && isFiring)
             {

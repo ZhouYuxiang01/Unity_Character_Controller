@@ -6,7 +6,7 @@ namespace Characters.Player.Animation
 {
     // 表现层的核心 负责转接动画意图 
     [RequireComponent(typeof(AnimancerComponent))]
-    public class AnimancerFacade : MonoBehaviour, IAnimationFacade
+    public class AnimancerFacade : AnimationFacadeBase
     {
         // 插件核心组件引用 它是实际干活的底层驱动 
         private AnimancerComponent _animancer;
@@ -33,7 +33,7 @@ namespace Characters.Player.Animation
         }
 
         // 播放基础动画 先清理老回调再注入新动作 
-        public void PlayClip(AnimationClip clip, AnimPlayOptions options)
+        public override void PlayClip(AnimationClip clip, AnimPlayOptions options)
         {
             if (clip == null) return;
             int layerIndex = options.Layer;
@@ -55,7 +55,7 @@ namespace Characters.Player.Animation
 
         // 播放混合树或序列动画 
         // 核心流程跟播放基础动画一样 确保逻辑闭环 
-        public void PlayTransition(object transitionObj, AnimPlayOptions options)
+        public override void PlayTransition(object transitionObj, AnimPlayOptions options)
         {
             var transition = transitionObj as ITransition;
             if (transition == null) return;
@@ -78,7 +78,7 @@ namespace Characters.Player.Animation
         // 核心逻辑 它是让角色跑动起来不再滑步的关键 
         // 负责把意图管线算出来的摇杆矢量 喂给动画混合树 
         // 这里必须精准获取当前激活的层级状态 拿错了角色就会动作漂移 
-        public void SetMixerParameter(Vector2 parameter, int layerIndex = 0)
+        public override void SetMixerParameter(Vector2 parameter, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
             if (state == null) return;
@@ -95,7 +95,7 @@ namespace Characters.Player.Animation
         }
 
         // 注册状态机跳转的结束指令 
-        public void SetOnEndCallback(System.Action onEndAction, int layerIndex = 0)
+        public override void SetOnEndCallback(System.Action onEndAction, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
 
@@ -125,7 +125,7 @@ namespace Characters.Player.Animation
         }
 
         // 动态调权重 实现上半身动作和面部表情叠加
-        public void SetLayerWeight(int layerIndex, float weight, float fadeDuration = 0f)
+        public override void SetLayerWeight(int layerIndex, float weight, float fadeDuration = 0f)
         {
             var layer = GetLayerOrFallback(layerIndex);
             if (layer == null) return;
@@ -135,14 +135,14 @@ namespace Characters.Player.Animation
         }
 
         // 注入动画遮罩 决定当前层级能控制哪些骨头 
-        public void SetLayerMask(int layerIndex, AvatarMask mask)
+        public override void SetLayerMask(int layerIndex, AvatarMask mask)
         {
             var layer = GetLayerOrFallback(layerIndex);
             if (layer != null) layer.Mask = mask;
         }
 
         // 强行清理指定层的事件流 这是一个极其重要的防御手段 
-        public void ClearOnEndCallback(int layerIndex = 0)
+        public override void ClearOnEndCallback(int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
             if (state != null)
@@ -154,7 +154,7 @@ namespace Characters.Player.Animation
         }
 
         // 在指定时间点插入逻辑反馈 
-        public void AddCallback(float normalizedTime, System.Action callback, int layerIndex = 0)
+        public override void AddCallback(float normalizedTime, System.Action callback, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
             if (state == null || callback == null) return;
@@ -195,13 +195,13 @@ namespace Characters.Player.Animation
         }
 
         // 基础层当前的播放进度 它是意图管线判断动作是否播完的重要依据 
-        public float CurrentTime => GetLayerTime(0);
-        public float CurrentNormalizedTime => GetLayerNormalizedTime(0);
+        public override float CurrentTime => GetLayerTime(0);
+        public override float CurrentNormalizedTime => GetLayerNormalizedTime(0);
 
-        public float GetLayerTime(int layerIndex)
+        public override float GetLayerTime(int layerIndex)
             => GetLayerOrFallback(layerIndex).CurrentState?.Time ?? 0f;
 
-        public float GetLayerNormalizedTime(int layerIndex)
+        public override float GetLayerNormalizedTime(int layerIndex)
             => GetLayerOrFallback(layerIndex).CurrentState?.NormalizedTime ?? 0f;
     }
 }

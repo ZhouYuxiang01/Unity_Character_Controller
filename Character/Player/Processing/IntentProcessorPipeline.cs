@@ -1,19 +1,27 @@
 using Characters.Player.Core;
-using Characters.Player.Processing;
+using Characters.Player.Data; // 引入数据
+using Characters.Player.Input;
+using Characters.Player.Processing.Input;
+using UnityEngine;
 
 namespace Characters.Player.Processing
 {
     // 意图处理器管道 它是输入意图到动画参数的完整转换链路 
-    // 第一阶段转换输入为逻辑意图 第二阶段转换逻辑意图为表现层参数 
     public class IntentProcessorPipeline
     {
-        // 核心处理器 负责各类输入的转换
+        // 只有总管家有权持有 InputPipeline 和 RuntimeData
+        private readonly InputPipeline _inputPipeline;
+        private readonly PlayerRuntimeData _runtimeData;
+        private readonly PlayerSO _config; // 参数转换与逻辑运算需要的配置
+
+        // 核心处理器 (严格保持干净的依赖)
         private readonly LocomotionIntentProcessor _locomotionIntentProcessor;
         private readonly AimIntentProcessor _aimIntentProcessor;
         private readonly JumpOrVaultIntentProcessor _jumpOrVaultIntentProcessor;
         private readonly EojIntentProcessor _eojIntentProcessor;
+        private readonly HotbarIntentProcessor _hotbarIntentProcessor; // 新增快捷栏意图
 
-        // 参数生成器 负责逻辑意图的编码
+        // 参数生成器
         private readonly MovementParameterProcessor _movementParameterProcessor;
         private readonly ViewRotationProcessor _viewRotationProcessor;
 
@@ -23,63 +31,86 @@ namespace Characters.Player.Processing
         public IntentProcessorPipeline(PlayerController player)
         {
             _playerController = player;
+            _runtimeData = player.RuntimeData;
+            _config = player.Config;
 
-            // 初始化顺序很重要 权威方向源必须最先生成 其他处理器才能消费
-            _viewRotationProcessor = new ViewRotationProcessor(player);
-            _aimIntentProcessor = new AimIntentProcessor(player);
-            _locomotionIntentProcessor = new LocomotionIntentProcessor(player);
-            _jumpOrVaultIntentProcessor = new JumpOrVaultIntentProcessor(player);
-            _eojIntentProcessor = new EojIntentProcessor(player);
+            // 创建输入管线 (使用序列化的输入源引用)
+            var inputSource = player.InputSourceRef as IInputSource;
+            if (inputSource == null)
+            {
+                Debug.LogError("[IntentProcessorPipeline] 玩家控制器的输入源未正确初始化");
+            }
+            _inputPipeline = new InputPipeline(inputSource, 0.05f, 0.03f, 0.2f);
 
-            _movementParameterProcessor = new MovementParameterProcessor(player);
+            // 【核心重构】：初始化所有处理器
+            _viewRotationProcessor = new ViewRotationProcessor(_runtimeData, _config);
+            _aimIntentProcessor = new AimIntentProcessor(_runtimeData);
+            _locomotionIntentProcessor = new LocomotionIntentProcessor(_runtimeData, _config);
+            _jumpOrVaultIntentProcessor = new JumpOrVaultIntentProcessor(_runtimeData, _config, player.transform);
+            _eojIntentProcessor = new EojIntentProcessor(_runtimeData);
+
+            // 🚨 修复空指针：在这里把你的快捷栏翻译机 new 出来！
+            _hotbarIntentProcessor = new HotbarIntentProcessor(_runtimeData);
+
+            _movementParameterProcessor = new MovementParameterProcessor(_runtimeData, _config, player.transform);
         }
 
         public void update()
         {
+            UpdateInputPipeline();
             UpdateIntentProcessors();
             UpdateParameterProcessors();
         }
 
-        // 第一阶段 意图生成 
-        // 顺序很关键 权威旋转 装备状态 瞄准状态 运动意图必须严格按序处理 
-        // 后续处理器依赖前序处理器的结果 打乱顺序会导致逻辑混乱 
+        public void UpdateInputPipeline()
+        {
+            _inputPipeline.Update();
+        }
+
         public void UpdateIntentProcessors()
         {
-            // 1. 确定权威旋转参考系 AuthorityYaw Pitch 这是所有方向计算的源头
-            _viewRotationProcessor.Update();
+            // 【神级代码】：抓取本帧纯净快照的内存指针！绝对零拷贝！
+            ref readonly ProcessedInputData inputSnapshot = ref _inputPipeline.Current.currentFrameData.Processed;
 
-            // 2. 轮询数字快捷键输入 装备意图 
-            _playerController.InventoryController?.UpdateNumberKeyInput();
+            // 1. 确定权威旋转参考系
+            _viewRotationProcessor.Update(in inputSnapshot);
 
-            // 3. 处理瞄准状态意图 影响动画混合树的选择
-            _aimIntentProcessor.Update();
+            // 2. 瞄准与开火意图处理 (接收开火消耗标记)
+            var aimResult = _aimIntentProcessor.Update(in inputSnapshot);
+            if (aimResult.shouldConsumeFire) _inputPipeline.ConsumeLeftMousePressed();
 
-            // 4. 处理最终的运动方向与行为意图 依赖上述所有状态
-            _locomotionIntentProcessor.Update();
+            // 3. 运动意图 (接收 out 参数反馈，若消耗了翻滚或闪避，立刻在管线中清零)
+            _locomotionIntentProcessor.Update(in inputSnapshot, out bool consumeRoll, out bool consumeDodge);
+            if (consumeRoll) _inputPipeline.ConsumeRollPressed();
+            if (consumeDodge) _inputPipeline.ConsumeDodgePressed();
 
-            // 5. 处理跳跃翻越意图 优先级较低但必须在运动之后
-            _jumpOrVaultIntentProcessor.Update();
+            // 4. 跳跃意图
+            if (_jumpOrVaultIntentProcessor.Update(in inputSnapshot))
+            {
+                _inputPipeline.ConsumeJumpPressed();
+            }
 
-            // 6. 表情意图 完全独立的一条线
-            _eojIntentProcessor.Update();
+            // 5. 表情意图
+            var eojResult = _eojIntentProcessor.Update(in inputSnapshot);
+            if (eojResult.c1) _inputPipeline.ConsumeExpression1Pressed();
+            if (eojResult.c2) _inputPipeline.ConsumeExpression2Pressed();
+            if (eojResult.c3) _inputPipeline.ConsumeExpression3Pressed();
+            if (eojResult.c4) _inputPipeline.ConsumeExpression4Pressed();
+
+            // 6. 快捷栏装备意图
+            var hbResult = _hotbarIntentProcessor.Update(in inputSnapshot);
+            if (hbResult.n1) _inputPipeline.ConsumeNumber1Pressed();
+            if (hbResult.n2) _inputPipeline.ConsumeNumber2Pressed();
+            if (hbResult.n3) _inputPipeline.ConsumeNumber3Pressed();
+            if (hbResult.n4) _inputPipeline.ConsumeNumber4Pressed();
+            if (hbResult.n5) _inputPipeline.ConsumeNumber5Pressed();
         }
 
-        // 第二阶段 参数编码 
-        // 将逻辑意图转换成动画系统能理解的参数 
-        // 这里的计算都是纯粹的数学运算 不产生新的意图 
         public void UpdateParameterProcessors()
         {
-            // 1. 根据运动意图计算动画混合参数 BlendX BlendY 
-            // 这些参数直接驱动Animancer的混合树权重
             _movementParameterProcessor.Update();
-
-            // IK 由 PlayerController 中的 IKController.Update() 单独处理
         }
 
-        // 对外公开引用 供特殊初始化或调试使用 
-        public LocomotionIntentProcessor Locomotion => _locomotionIntentProcessor;
-        public AimIntentProcessor Aim => _aimIntentProcessor;
-        public JumpOrVaultIntentProcessor JumpOrVault => _jumpOrVaultIntentProcessor;
-        public EojIntentProcessor Eoj => _eojIntentProcessor;
+        public InputPipeline InputPipeline => _inputPipeline;
     }
 }

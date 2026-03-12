@@ -2,8 +2,8 @@ using Animancer;
 using Characters.Player.Animation;
 using Characters.Player.Core;
 using Characters.Player.Data;
-using Characters.Player.Input;
 using Characters.Player.Expression;
+using Characters.Player.Input;
 using Characters.Player.Processing;
 using Characters.Player.States;
 using Core.StateMachine;
@@ -18,13 +18,20 @@ namespace Characters.Player
     // 采用 Update(逻辑) -> LateUpdate(物理与表现) 的错峰管线设计 
     // 不包含具体游戏逻辑 仅负责组件整合与指令分发 
     [RequireComponent(typeof(CharacterController))]
-    [RequireComponent(typeof(PlayerInputReader))]
     [RequireComponent(typeof(AnimancerComponent))]
     [RequireComponent(typeof(AnimancerFacade))]
     [RequireComponent(typeof(Animator))]
     [DefaultExecutionOrder(-300)]
     public class PlayerController : MonoBehaviour
     {
+        [Header("--- 输入与表现源 (Input & Presentation Sources) ---")]
+        [Tooltip("输入源 - 可拖拽赋值任何继承 IInputSourceBase 的组件")]
+        public IInputSourceBase InputSourceRef;
+        [Tooltip("动画外观 - 可拖拽赋值任何继承 AnimationFacadeBase 的组件")]
+        public AnimationFacadeBase AnimationFacadeRef;
+        [Tooltip("IK 目标源 - 可拖拽赋值任何继承 PlayerIKSourceBase 的组件")]
+        public PlayerIKSourceBase IKSource;
+
         [Header("--- 核心配置 ---")]
         [Tooltip("玩家的配置文件")]
         public PlayerSO Config;
@@ -32,7 +39,6 @@ namespace Characters.Player
         public Transform PlayerCamera;
 
         [Header("--- 表现与挂点 ---")]
-        public PlayerIKSourceBase IKSource;
         public Transform WeaponContainer;
         public Transform RightHandBone;
         public Animator animator;
@@ -49,19 +55,20 @@ namespace Characters.Player
         public StateMachine StateMachine { get; private set; }
         public GlobalInterruptProcessor InterruptProcessor { get; private set; }
         public PlayerRuntimeData RuntimeData { get; private set; }
-        public Characters.Player.Expression.PlayerInventoryController InventoryController { get; private set; }
-        public PlayerInputReader InputReader { get; private set; }
+        public InputData InputData { get; private set; }
+        public PlayerInventoryController InventoryController { get; private set; }
 
         // 驱动器与外观层系统
         public AnimancerComponent Animancer { get; private set; }
-        public IAnimationFacade AnimFacade { get; private set; }
         public CharacterController CharController { get; private set; }
         public MotionDriver MotionDriver { get; private set; }
         public EquipmentDriver EquipmentDriver { get; private set; }
+        public IAnimationFacade AnimFacade { get; private set; }
 
         // 状态注册表与子控制器
         public PlayerStateRegistry StateRegistry { get; private set; }
         public UpperBodyController UpperBodyCtrl { get; private set; }
+
         private FacialController _facialController;
         private IKController _ikController;
         private IntentProcessorPipeline _intentProcessorPipeline;
@@ -79,14 +86,19 @@ namespace Characters.Player
             animator = GetComponent<Animator>();
             Animancer = GetComponent<AnimancerComponent>();
             CharController = GetComponent<CharacterController>();
-            InputReader = GetComponent<PlayerInputReader>();
-            AnimFacade = GetComponent<AnimancerFacade>();
+
+            // 初始化输入源 - 优先使用序列化的引用，其次自动获取
+            InitializeInputSource();
+
+            // 初始化动画外观 - 优先使用序列化的引用，其次自动获取
+            InitializeAnimationFacade();
 
             Animancer.Animator.applyRootMotion = false;
 
             // 2. 实例化纯数据容器
             RuntimeData = new PlayerRuntimeData();
             if (Config != null) RuntimeData.CurrentStamina = Config.Core.MaxStamina;
+            InputData = new InputData();
 
             // 3. 实例化所有系统控制器与驱动器 
             StateMachine = new StateMachine();
@@ -111,6 +123,114 @@ namespace Characters.Player
             else
             {
                 Debug.LogError("[PlayerController] 致命错误 未配置 PlayerSO 或 Brain");
+            }
+        }
+
+        /// <summary>
+        /// 初始化输入源 - 优先使用序列化的 InputSourceRef，其次自动获取组件
+        /// </summary>
+        private void InitializeInputSource()
+        {
+            if (InputSourceRef != null)
+            {
+                // 直接使用序列化的引用
+                try
+                {
+                    var inputSource = InputSourceRef as IInputSource;
+                    if (inputSource != null)
+                    {
+                        Debug.Log("[PlayerController] 输入源已通过编辑器赋值");
+                    }
+                    else
+                    {
+                        throw new System.InvalidCastException($"InputSourceRef 无法转换为 IInputSource");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[PlayerController] 序列化的 InputSourceRef 类型转换失败: {ex.Message}");
+                    InputSourceRef = null;
+                    TryGetInputSourceComponent();
+                }
+            }
+            else
+            {
+                // 自动尝试获取组件
+                TryGetInputSourceComponent();
+            }
+        }
+
+        /// <summary>
+        /// 尝试自动获取 PlayerInputReader 组件
+        /// </summary>
+        private void TryGetInputSourceComponent()
+        {
+            try
+            {
+                InputSourceRef = GetComponent<PlayerInputReader>();
+                if (InputSourceRef != null)
+                {
+                    Debug.Log("[PlayerController] 输入源已通过自动获取组件");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerController] 未找到 PlayerInputReader 组件，请检查");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[PlayerController] 自动获取输入源失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 初始化动画外观 - 优先使用序列化的 AnimationFacadeRef，其次自动获取组件
+        /// </summary>
+        private void InitializeAnimationFacade()
+        {
+            if (AnimationFacadeRef != null)
+            {
+                // 直接使用序列化的引用
+                try
+                {
+                    AnimFacade = AnimationFacadeRef;
+                    Debug.Log("[PlayerController] 动画外观已通过编辑器赋值");
+                }
+                catch
+                {
+                    Debug.LogWarning("[PlayerController] 序列化的 AnimationFacadeRef 初始化失败");
+                    AnimationFacadeRef = null;
+                    TryGetAnimationFacadeComponent();
+                }
+            }
+            else
+            {
+                // 自动尝试获取组件
+                TryGetAnimationFacadeComponent();
+            }
+        }
+
+        /// <summary>
+        /// 尝试自动获取 AnimancerFacade 组件
+        /// </summary>
+        private void TryGetAnimationFacadeComponent()
+        {
+            try
+            {
+                AnimationFacadeRef = GetComponent<AnimancerFacade>();
+                if (AnimationFacadeRef != null)
+                {
+                    AnimFacade = AnimationFacadeRef;
+                    Debug.Log("[PlayerController] 动画外观已通过自动获取组件");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerController] 未找到 AnimancerFacade 组件，请检查");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[PlayerController] 自动获取动画外观失败: {ex.Message}");
             }
         }
 
@@ -193,27 +313,28 @@ namespace Characters.Player
         {
             _lastState = StateMachine.CurrentState as PlayerBaseState;
 
-            // 1. 输入 原始数据 直接读取 PlayerInputFrame
-            var inputFrame = InputReader.Current;
-            RuntimeData.MoveInput = inputFrame.Move;
-            RuntimeData.LookInput = inputFrame.Look;
+            // 0. 输入管线更新 最高优先级 所有系统必须通过此管线读取输入
+            _intentProcessorPipeline.UpdateInputPipeline();
 
-            // 2. 原始数据 逻辑意图 含视角 装备 瞄准 运动
+            // 1. 原始数据 逻辑意图 含视角 装备 瞄准 运动
             _intentProcessorPipeline.UpdateIntentProcessors();
 
-            // 3. 被动状态更新 根据当前角色状态更新核心属性 体力 生命值等
+            // 1.5 快捷栏装备切换 必须在意图管线后执行，这样才能消费数字键意图
+            InventoryController.Update();
+
+            // 2. 被动状态更新 根据当前角色状态更新核心属性 体力 生命值等
             _characterStatusDriver.Update();
 
-            // 4. 逻辑意图 表现层参数 更新动画 Mixer 参数等
+            // 3. 逻辑意图 表现层参数 更新动画 Mixer 参数等
             _intentProcessorPipeline.UpdateParameterProcessors();
 
-            // 5. 状态逻辑更新 包含全局打断检测 状态流转逻辑
+            // 4. 状态逻辑更新 包含全局打断检测 状态流转逻辑
             StateMachine.CurrentState?.LogicUpdate();
 
-            // 6. 更新上半身分层控制器 装备 瞄准 攻击等
+            // 5. 更新上半身分层控制器 装备 瞄准 攻击等
             UpperBodyCtrl.Update();
 
-            // 7. 更新表情 读取黑板意图并播放瞬时表情
+            // 6. 更新表情 读取黑板意图并播放瞬时表情
             _facialController?.Update();
 
             // 调试状态切换记录
@@ -242,7 +363,7 @@ namespace Characters.Player
             // 10. 清理帧尾标记 防止意图残留到下一帧的防御性编程
             RuntimeData.ResetIntetnt();
 
-            Debug.Log(RuntimeData.CurrentSpeed);
+            // Debug.Log(RuntimeData.CurrentSpeed);
         }
 
         public void NotifyEquipmentChanged()
