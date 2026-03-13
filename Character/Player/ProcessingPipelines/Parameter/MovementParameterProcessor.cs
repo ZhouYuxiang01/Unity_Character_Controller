@@ -3,30 +3,30 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Processing
 {
-    // 动画参数处理器 只负责计算 X Y 动画混合参数（单位圆方向）并驱动下落检测与意图生成
+    // 动画参数处理器
     public class MovementParameterProcessor
     {
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
         private readonly Transform _playerTransform;
 
-        // 动画 X Y 参数平滑状态 
+        // 动画 X Y 参数平滑状态
         private float _currentAnimBlendX;
         private float _xBlendVelocity;
         private float _currentAnimBlendY;
         private float _yBlendVelocity;
 
-        // 下落距离计算状态 追踪本次空中过程的最高点 
+        // 下落距离计算状态 追踪本次空中过程的最高点
         private float _apexY;
         private bool _wasGroundedLastFrame;
 
-        // 下落意图计算状态 累积空中时间判断是否应该进入下落动画 
+        // 下落意图计算状态 累积空中时间判断是否应该进入下落动画
         private float _airborneTime;
 
         // 记录上一次瞄准状态
         private bool _lastAiming = false;
 
-        // 构造函数：极简注入
+        // 构造函数 极简注入 仅依赖黑板 配置 与 Transform
         public MovementParameterProcessor(PlayerRuntimeData data, PlayerSO config, Transform playerTransform)
         {
             _data = data;
@@ -43,7 +43,6 @@ namespace Characters.Player.Processing
             _airborneTime = 0f;
         }
 
-        // 每帧更新：由于是流水线最后一步，它直接从 _data 中拿数据运算，不需要 InputSnapshot
         public void Update()
         {
             UpdateDesiredLocalMoveAngleFromWorldDir();

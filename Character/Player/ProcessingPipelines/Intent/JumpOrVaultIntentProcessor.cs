@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace Characters.Player.Processing
 {
-    // 跳跃与翻越意图处理器 它是高段移动的决策中枢 
-    // 负责检测翻越障碍物 仲裁跳跃 翻越 二段跳的优先级 
+    // 跳跃与翻越意图处理器
+    // 高段移动的决策中枢 负责检测翻越障碍物 仲裁跳跃/翻越与二段跳 的优先级
     public class JumpOrVaultIntentProcessor
     {
         private readonly PlayerRuntimeData _data;
@@ -12,13 +12,12 @@ namespace Characters.Player.Processing
         private readonly Transform _playerTransform;
         private readonly LayerMask _obstacleMask;
 
-        // 缓存有效的翻越信息 使得按键时能快速获取最新的障碍物数据 
+        // 缓存有效的翻越信息 使按键时能快速获取最新障碍物数据
         private VaultObstacleInfo _lastValidLowVaultInfo;
         private float _lastValidLowVaultTime;
         private VaultObstacleInfo _lastValidHighVaultInfo;
         private float _lastValidHighVaultTime;
 
-        // 构造函数：只注入纯粹的数据和物理锚点 (Transform)
         public JumpOrVaultIntentProcessor(PlayerRuntimeData data, PlayerSO config, Transform playerTransform)
         {
             _data = data;
@@ -27,10 +26,11 @@ namespace Characters.Player.Processing
             _obstacleMask = _config.Vaulting.ObstacleLayers;
         }
 
-        // 返回值 bool：告诉总管家“我是否成功处理(消耗)了跳跃意图”
+        // 更新函数 每帧读取输入快照 并在需要时 尝试处理跳跃意图
+        // 如果成功处理了跳跃意图 将返回 true 要求上层消耗输入
         public bool Update(in ProcessedInputData input)
         {
-            // 实时扫描环境并更新缓存 但只在地面上进行以节省性能
+            // 仅在地面上扫描环境 以节省性能
             if (_data.IsGrounded)
             {
                 if (DetectObstacle(out VaultObstacleInfo lowInfo, _config.Vaulting.LowVaultMinHeight, _config.Vaulting.LowVaultMaxHeight, false))
@@ -46,10 +46,8 @@ namespace Characters.Player.Processing
                 }
             }
 
-            // 0拷贝读取快照的属性
             if (input.JumpPressed)
             {
-                // 如果成功处理了跳跃相关意图，返回true要求消耗输入
                 if (HandleJumpIntent(_data))
                 {
                     return true;
@@ -59,8 +57,7 @@ namespace Characters.Player.Processing
             return false;
         }
 
-        // 跳跃意图处理 仲裁是否跳跃 翻越或二段跳 
-        // 优先级依次为 低翻越 高翻越 地面跳跃 空中二段跳 
+        // 跳跃意图处理
         private bool HandleJumpIntent(PlayerRuntimeData data)
         {
             if (TryGetVaultIntent(data, out VaultObstacleInfo info, _config.Vaulting.LowVaultMinHeight, _config.Vaulting.LowVaultMaxHeight))
@@ -97,54 +94,72 @@ namespace Characters.Player.Processing
 
         public bool TryGetVaultIntent(PlayerRuntimeData data, out VaultObstacleInfo info, float minHeight, float maxHeight)
         {
-            info = new VaultObstacleInfo { IsValid = false };
-            if (!data.IsGrounded && !data.HasPerformedDoubleJumpInAir) return false;
-
-            // 按下按键时 调用静默模式的检测 获取最新数据
             return DetectObstacle(out info, minHeight, maxHeight, true);
         }
 
-        // 纯粹的数学和物理检测逻辑 无状态副作用 
         private bool DetectObstacle(out VaultObstacleInfo info, float minHeight, float maxHeight, bool isSilent)
         {
             info = new VaultObstacleInfo { IsValid = false };
 
             Transform root = _playerTransform;
+
             Vector3 rayStart = root.position + Vector3.up * _config.Vaulting.VaultForwardRayHeight;
+            // 从角色上方偏移 VaultForwardRayHeight 作为前方探测的起点
+
             Vector3 forward = root.forward;
+            // forward = 角色面向，用于朝前的射线方向
 
             if (Physics.Raycast(rayStart, forward, out RaycastHit wallHit, _config.Vaulting.VaultForwardRayLength, _obstacleMask))
             {
+                // 命中前方物体，wallHit 包含击中点与法线
+
                 if (Vector3.Dot(wallHit.normal, Vector3.up) > 0.1f) return false;
+                // 如果命中面的法线接近上向（点积大），说明是地面或缓坡，退出判断
 
                 Vector3 downRayStart = wallHit.point + Vector3.up * _config.Vaulting.VaultDownwardRayLength + forward * _config.Vaulting.VaultDownwardRayOffset;
+                // 在墙面点上方并向前偏移，作为向下搜索 ledge 的起点
 
                 if (Physics.Raycast(downRayStart, Vector3.down, out RaycastHit ledgeHit, _config.Vaulting.VaultDownwardRayLength, _obstacleMask))
                 {
+                    // 找到墙顶或台阶的顶面 ledgeHit
+
                     if (Vector3.Dot(ledgeHit.normal, Vector3.up) < 0.9f) return false;
+                    // ledge 的法线必须接近上向，保证为可站立的平面
 
                     float height = ledgeHit.point.y - root.position.y;
+                    // 计算台阶顶面相对于角色根点的高度
+
                     if (height < minHeight || height > maxHeight) return false;
+                    // 高度不在可翻越区间时退出（用于区分低翻越/高翻越）
 
                     Vector3 vaultForwardDir = -wallHit.normal;
+                    // 翻越的前向为墙法线的反方向（远离墙）
+
                     Vector3 landRayStart = ledgeHit.point + vaultForwardDir * _config.Vaulting.VaultLandDistance + Vector3.up * 0.5f;
+                    // 从 ledge 前方偏移 VaultLandDistance 并上移 0.5m 作为落点检测起点
+
                     Vector3 finalLandPoint = Vector3.zero;
                     bool foundGround = false;
 
                     if (Physics.Raycast(landRayStart, Vector3.down, out RaycastHit landHit, _config.Vaulting.VaultLandRayLength, _obstacleMask))
                     {
+                        // 向下检测墙后地面
+
                         if (Vector3.Dot(landHit.normal, Vector3.up) >= 0.7f)
                         {
                             finalLandPoint = landHit.point;
                             foundGround = true;
                         }
+                        // 要求地面法线和上向的点积足够大，保证不是陡坡或不稳定表面
                     }
 
                     if (_config.Vaulting.RequireGroundBehindWall && !foundGround) return false;
+                    // 若配置要求墙后必须有地面且未找到则不可翻越
 
                     if (!foundGround)
                     {
                         finalLandPoint = landRayStart + Vector3.down * 0.5f;
+                        // 未找到地面时使用兜底点（下移0.5m）作为预估落点，保证数据可用
                     }
 
                     info.IsValid = true;
@@ -152,27 +167,32 @@ namespace Characters.Player.Processing
                     info.WallNormal = wallHit.normal;
                     info.Height = height;
                     info.ExpectedLandPoint = finalLandPoint;
+                    // 填充翻越信息，供上层动画/IK/移动使用
 
                     Vector3 ledgeEdge = new Vector3(wallHit.point.x, ledgeHit.point.y, wallHit.point.z);
                     info.LedgePoint = ledgeEdge;
+                    // 计算墙沿边缘坐标（结合墙的 xz 与 ledge 的 y）
 
-                    // 利用纯数学矩阵解耦的手部IK推算
                     Vector3 wallNormalFlat = new Vector3(wallHit.normal.x, 0f, wallHit.normal.z);
                     if (wallNormalFlat.sqrMagnitude < 0.0001f) return false;
+                    // 将墙面法线投影到水平面并检查长度，避免数值不稳定（如几乎垂直的法线）
 
                     Vector3 rightDir = Vector3.Cross(Vector3.up, wallNormalFlat).normalized;
                     Vector3 characterRight = new Vector3(root.right.x, 0f, root.right.z).normalized;
+                    // 计算沿墙面的水平右向（用于手部 IK）并取得角色的水平右向
 
                     if (characterRight.sqrMagnitude > 0.0001f)
                     {
                         if (Vector3.Dot(rightDir, characterRight) < 0f)
                             rightDir = -rightDir;
+                        // 若计算得到的 rightDir 与角色当前右向相反，则翻转，保证左右手方向一致
                     }
 
                     float halfSpread = _config.Vaulting.VaultHandSpread * 0.5f;
                     info.LeftHandPos = ledgeEdge - rightDir * halfSpread;
                     info.RightHandPos = ledgeEdge + rightDir * halfSpread;
                     info.HandRot = Quaternion.LookRotation(-wallNormalFlat.normalized, Vector3.up);
+                    // 根据 VaultHandSpread 计算左右手位置，并让手朝向朝向墙面
 
                     return true;
                 }

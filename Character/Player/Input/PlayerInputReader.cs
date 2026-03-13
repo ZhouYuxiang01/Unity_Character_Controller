@@ -4,7 +4,7 @@ using Characters.Player.Data;
 
 namespace Characters.Player.Input
 {
-    public class PlayerInputReader : IInputSourceBase
+    public class PlayerInputReader : InputSourceBase
     {
         #region 配置参数
         [Header("视角设置")]

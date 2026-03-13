@@ -36,6 +36,9 @@ namespace Characters.Player.States
             });
 
             PerformJumpPhysics();
+
+            // 消费跳跃输入 防止同帧重复触发
+            player.InputPipeline.ConsumeJumpPressed();
         }
 
         // 根据当前运动状态和装备情况选择对应的跳跃动画和跳跃力量

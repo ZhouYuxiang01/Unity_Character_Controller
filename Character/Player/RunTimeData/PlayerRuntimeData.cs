@@ -315,14 +315,11 @@ namespace Characters.Player.Data
             WantsToRoll = false;
             WantsLowVault = false;
             WantsHighVault = false;
-            WantsToFire = false; // 清理开火意图
-
-            // Expression intents (one-frame)
+            WantsToFire = false; 
             WantsExpression1 = false;
             WantsExpression2 = false;
             WantsExpression3 = false;
             WantsExpression4 = false;
-            // 注意：WantsToFall 由 MovementParameterProcessor 每帧计算，不在这里清理
         }
 
         #endregion

@@ -2,33 +2,48 @@ using UnityEngine;
 using Characters.Player.Data;
 using Characters.Player.Input;
 
-namespace Characters.Player.Processing.Input
+namespace Characters.Player.Processing
 {
+    /// <summary>
+    /// 系统流转的第一道关卡 唯一的数据生产者
+    /// 数据流向：从 IInputSource (硬件) 提取脏数据 - 栈上清洗 (防抖/缓存) - 压入堆内存黑板 (InputData)
+    /// 拥有绝对的写入权限。对外部仅暴露只读引用，外部系统只能通过 Consume 接口进行受控的数据核销
+    /// </summary>
     public class InputPipeline
     {
+        // 输入源接口
         private readonly IInputSource _inputSource;
+
+        // 0 GC 堆内存容器，在构造时预分配，全生命周期复用
         private InputData _inputData;
 
+        // 栈上瞬时数据缓存
         private RawInputData _rawData;
         private Vector2 _bufferedMove;
         private float _lastNonZeroMoveTime;
 
         // 配置参数
+        // WASD指令缓存时间
         private readonly float _inputFlickerBuffer;
+        // 动作指令缓存时间  将原来单帧的硬件触发 拉长为 N 秒的合法“意愿期”
         private readonly float _actionBufferTime;
+
+        // 全局物理帧计数器
         private ulong _frameIndex;
 
-        // 对外公开当前输入数据 (PlayerController 通过这个属性来拿数据)
+        /// <summary>
+        /// 对外暴露的当前输入快照
+        /// 其他系统只能读取此引用 绝对禁止直接修改内部字段
+        /// </summary>
         public InputData Current => _inputData;
 
-        // 【彻底解耦】：绝对不传入 PlayerController，只认 IInputSource！
         public InputPipeline(IInputSource inputSource, float inputFlickerBuffer = 0.05f, float lookSmoothTime = 0.03f, float actionBufferTime = 0.2f)
         {
             _inputSource = inputSource;
             _inputFlickerBuffer = inputFlickerBuffer;
             _actionBufferTime = actionBufferTime;
 
-            // 管线自己作为数据的源头，直接 new 出黑板容器
+            // 管线作为数据的绝对源头 自行分配容器 避免GC
             _inputData = new InputData();
             _inputData.currentFrameData = new FrameInputData { FrameIndex = 0 };
             _inputData.lastFrameData = new FrameInputData { FrameIndex = 0 };
@@ -39,14 +54,27 @@ namespace Characters.Player.Processing.Input
             _frameIndex = 0;
         }
 
+        /// <summary>
+        /// playercontroller Update 最优先调用的函数
+        /// 负责历史快照更迭 并拉起一轮新的硬件数据采样
+        /// </summary>
         public void Update()
         {
+            // 推进历史帧
             _inputData.lastFrameData = _inputData.currentFrameData;
+
+            // 采样硬件真实状态
             _inputSource.FetchRawInput(ref _rawData);
+
+            // 后处理数据并压入内存
             ProcessRawInput();
+
             _frameIndex++;
         }
 
+        /// <summary>
+        /// 输入数据的后处理方法
+        /// </summary>
         private void ProcessRawInput()
         {
             var currentFrame = new FrameInputData
@@ -56,7 +84,7 @@ namespace Characters.Player.Processing.Input
                 Processed = default
             };
 
-            // ============== 轴向输入处理 ==============
+            // 输入轴防抖处理
             if (_rawData.MoveAxis.sqrMagnitude > 0.01f)
             {
                 _bufferedMove = _rawData.MoveAxis;
@@ -65,6 +93,7 @@ namespace Characters.Player.Processing.Input
             }
             else if (Time.time - _lastNonZeroMoveTime < _inputFlickerBuffer)
             {
+                // 处于防抖窗口内 使用缓存的最后一次有效值
                 currentFrame.Processed.Move = _bufferedMove;
             }
             else
@@ -72,10 +101,10 @@ namespace Characters.Player.Processing.Input
                 currentFrame.Processed.Move = Vector2.zero;
             }
 
-            // 【完美保留】：视角绝对不平滑，原汁原味透传
+            // 注：LookAxis 属于 Delta (增量) 数据，绝对禁止在此处 SmoothDamp，直接原样透传给摄像机逻辑 不然视角会像弹簧一样回到原位
             currentFrame.Processed.Look = _rawData.LookAxis;
 
-            // ============== 持续状态直传 ==============
+            //  持续按压状态的继承
             currentFrame.Processed.JumpHeld = _rawData.JumpHeld;
             currentFrame.Processed.DodgeHeld = _rawData.DodgeHeld;
             currentFrame.Processed.RollHeld = _rawData.RollHeld;
@@ -83,9 +112,8 @@ namespace Characters.Player.Processing.Input
             currentFrame.Processed.WalkHeld = _rawData.WalkHeld;
             currentFrame.Processed.AimHeld = _rawData.AimHeld;
             currentFrame.Processed.InteractHeld = _rawData.InteractHeld;
-            // FireHeld 已合并到 LeftMouseHeld，这里只赋值 LeftMouseHeld
+
             currentFrame.Processed.LeftMouseHeld = _rawData.LeftMouseHeld;
-            // 保持兼容性：FireHeld 就是 LeftMouseHeld
             currentFrame.Processed.FireHeld = _rawData.LeftMouseHeld;
 
             currentFrame.Processed.Expression1Held = _rawData.Expression1Held;
@@ -101,7 +129,9 @@ namespace Characters.Player.Processing.Input
 
             currentFrame.Processed.WaveHeld = _rawData.WaveHeld;
 
-            // ============== 核心魔法：动作缓存池管理 ==============
+            //  动作缓存池调度
+            // 核心机制：一旦硬件触发 JustPressed 给对应的Timer充能 随后随时间衰减。
+            // 外部读取的 bool Pressed 是依赖此 Timer 的计算属性
             float dt = Time.deltaTime;
             var lastProc = _inputData.lastFrameData.Processed;
 
@@ -115,9 +145,8 @@ namespace Characters.Player.Processing.Input
             currentFrame.Processed.JumpBufferTimer = UpdateBuffer(lastProc.JumpBufferTimer, _rawData.JumpJustPressed);
             currentFrame.Processed.DodgeBufferTimer = UpdateBuffer(lastProc.DodgeBufferTimer, _rawData.DodgeJustPressed);
             currentFrame.Processed.RollBufferTimer = UpdateBuffer(lastProc.RollBufferTimer, _rawData.RollJustPressed);
-            // FireBufferTimer 合并到 LeftMouseBufferTimer
+
             currentFrame.Processed.LeftMouseBufferTimer = UpdateBuffer(lastProc.LeftMouseBufferTimer, _rawData.LeftMouseJustPressed);
-            // 保持兼容性：FireBufferTimer 就是 LeftMouseBufferTimer
             currentFrame.Processed.FireBufferTimer = currentFrame.Processed.LeftMouseBufferTimer;
 
             currentFrame.Processed.Expression1BufferTimer = UpdateBuffer(lastProc.Expression1BufferTimer, _rawData.Expression1JustPressed);
@@ -133,18 +162,18 @@ namespace Characters.Player.Processing.Input
 
             currentFrame.Processed.WaveBufferTimer = UpdateBuffer(lastProc.WaveBufferTimer, _rawData.WaveJustPressed);
 
-            // 【注意】：这里把给 JumpPressed 赋值的代码全删了！
-            // 因为在 InputData.cs 里，JumpPressed 应该写成：public bool JumpPressed => JumpBufferTimer > 0f;
-            // 这样只要 Timer 归零，Pressed 瞬间就变成 false，绝对不会产生连跳 Bug！
-
+            // 将局部计算完毕的纯净数据 一次性写回堆内存 供全局读取
             _inputData.currentFrameData = currentFrame;
         }
 
-        // ============== 消费接口 ==============
+        // 消费仲裁接口 
+        // IntentProcessor (意图仲裁) 或 State在动作确立时调用。
+        // 调用后 Timer 瞬间归零 配合 实现同帧内核销。
+
         public void ConsumeJumpPressed() { var f = _inputData.currentFrameData; f.Processed.JumpBufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeDodgePressed() { var f = _inputData.currentFrameData; f.Processed.DodgeBufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeRollPressed() { var f = _inputData.currentFrameData; f.Processed.RollBufferTimer = 0f; _inputData.currentFrameData = f; }
-        // ConsumeFirePressed 保持向后兼容，内部调用 ConsumeLeftMousePressed
+
         public void ConsumeFirePressed() => ConsumeLeftMousePressed();
 
         public void ConsumeExpression1Pressed() { var f = _inputData.currentFrameData; f.Processed.Expression1BufferTimer = 0f; _inputData.currentFrameData = f; }

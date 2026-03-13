@@ -26,6 +26,9 @@ namespace Characters.Player.States
             ChooseOptionsAndPlay(_clipData.Clip);
             PerformJumpPhysics();
 
+            // 消费跳跃输入 防止同帧重复触发
+            player.InputPipeline.ConsumeJumpPressed();
+
             AnimFacade.SetOnEndCallback(() =>
             {
                 if (player.CharController.isGrounded)

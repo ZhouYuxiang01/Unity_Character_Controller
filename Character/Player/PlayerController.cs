@@ -14,9 +14,12 @@ using Items.Core;
 
 namespace Characters.Player
 {
-    // 玩家角色的核心控制器 它是整个玩家系统的根节点 
-    // 采用 Update(逻辑) -> LateUpdate(物理与表现) 的错峰管线设计 
-    // 不包含具体游戏逻辑 仅负责组件整合与指令分发 
+    /// <summary>
+    /// 【角色架构之巅：PlayerController 总管家】
+    /// 架构定位：整个玩家系统的 Root 节点，唯一的 Monobehaviour 驱动源。
+    /// 核心指责：不包含任何具体游戏逻辑，仅负责组件整合、内存分配与严格的时序指令分发。
+    /// 【时序魔法】：采用 Update(逻辑计算) -> 引擎内部动画结算 -> LateUpdate(物理与表现应用) 的错峰管线设计，彻底消除“骨骼延迟一帧”的抽搐 Bug。
+    /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(AnimancerComponent))]
     [RequireComponent(typeof(AnimancerFacade))]
@@ -26,16 +29,14 @@ namespace Characters.Player
     {
         [Header("--- 输入与表现源 (Input & Presentation Sources) ---")]
         [Tooltip("输入源 - 可拖拽赋值任何继承 IInputSourceBase 的组件")]
-        public IInputSourceBase InputSourceRef;
-        [Tooltip("动画外观 - 可拖拽赋值任何继承 AnimationFacadeBase 的组件")]
+        public InputSourceBase InputSourceRef;
+        [Tooltip("动画转接器 - 可拖拽赋值任何继承 AnimationFacadeBase 的组件")]
         public AnimationFacadeBase AnimationFacadeRef;
         [Tooltip("IK 目标源 - 可拖拽赋值任何继承 PlayerIKSourceBase 的组件")]
         public PlayerIKSourceBase IKSource;
 
         [Header("--- 核心配置 ---")]
-        [Tooltip("玩家的配置文件")]
         public PlayerSO Config;
-        [Tooltip("玩家摄像机 可选 未指定时自动获取 MainCamera")]
         public Transform PlayerCamera;
 
         [Header("--- 表现与挂点 ---")]
@@ -43,12 +44,10 @@ namespace Characters.Player
         public Transform RightHandBone;
         public Animator animator;
 
-        [Header("--- 调试选项 Debug Options ---")]
-        [Tooltip("如果配置了此项 游戏开始时会自动装备这个物品 最多 3 个 用于调试")]
+        [Header("--- 调试选项 ---")]
         public EquippableItemSO DefaultEquipment1;
         public EquippableItemSO DefaultEquipment2;
         public EquippableItemSO DefaultEquipment3;
-        [Tooltip("开启状态切换日志 输出每次状态机切换的状态名称")]
         public bool statedebug = false;
 
         // 运行时核心引用
@@ -56,6 +55,16 @@ namespace Characters.Player
         public GlobalInterruptProcessor InterruptProcessor { get; private set; }
         public PlayerRuntimeData RuntimeData { get; private set; }
         public InputData InputData { get; private set; }
+        private CharacterStatusDriver _characterStatusDriver;
+
+        // 核心管线
+        public InputPipeline InputPipeline { get; private set; }
+        public MainProcessorPipeline MainProcessorPipeline { get; private set; }
+
+        //子系统控制器
+        public UpperBodyController UpperBodyCtrl { get; private set; }
+        public FacialController _facialController { get; private set; }
+        public IKController _ikController { get; private set; }
         public PlayerInventoryController InventoryController { get; private set; }
 
         // 驱动器与外观层系统
@@ -63,58 +72,85 @@ namespace Characters.Player
         public CharacterController CharController { get; private set; }
         public MotionDriver MotionDriver { get; private set; }
         public EquipmentDriver EquipmentDriver { get; private set; }
-        public IAnimationFacade AnimFacade { get; private set; }
+        public AnimationFacadeBase AnimFacade { get; private set; }
 
-        // 状态注册表与子控制器
+        // 状态注册表
         public PlayerStateRegistry StateRegistry { get; private set; }
-        public UpperBodyController UpperBodyCtrl { get; private set; }
 
-        private FacialController _facialController;
-        private IKController _ikController;
-        private IntentProcessorPipeline _intentProcessorPipeline;
-        private CharacterStatusDriver _characterStatusDriver;
-
-        // 内部缓存
+        //调试用缓存
         private PlayerBaseState _lastState;
         public event System.Action OnEquipmentChanged;
 
-        // Awake 负责内存分配 找组件 依赖注入 
-        // 所有初始化都在这里完成 不依赖运行时数据 
+        // Awake 负责内存分配、找组件、依赖注入。所有初始化都在这里完成。
         private void Awake()
         {
-            // 1. 获取 Unity 原生与桥接组件
             animator = GetComponent<Animator>();
             Animancer = GetComponent<AnimancerComponent>();
             CharController = GetComponent<CharacterController>();
 
-            // 初始化输入源 - 优先使用序列化的引用，其次自动获取
-            InitializeInputSource();
+            // 统一的面板依赖注入检查 失败直接抛出异常
+            try
+            {
+                if (InputSourceRef == null)
+                {
+                    throw new System.Exception("输入源未配置 请检查面板 InputSourceRef 赋值");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PlayerController] 初始化警告 {ex.Message}");
+            }
 
-            // 初始化动画外观 - 优先使用序列化的引用，其次自动获取
-            InitializeAnimationFacade();
+            try
+            {
+                AnimFacade = AnimationFacadeRef;
+                if (AnimFacade == null)
+                {
+                    throw new System.Exception("动画源未配置 请检查面板 AnimationFacadeRef 赋值");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PlayerController] 初始化警告 {ex.Message}");
+            }
+
+            try
+            {
+                if (IKSource == null)
+                {
+                    throw new System.Exception("IK目标源未配置 请检查面板 IKSource 赋值");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PlayerController] 初始化警告 {ex.Message}");
+            }
 
             Animancer.Animator.applyRootMotion = false;
 
-            // 2. 实例化纯数据容器
+            // 1. 实例化纯数据容器
             RuntimeData = new PlayerRuntimeData();
             if (Config != null) RuntimeData.CurrentStamina = Config.Core.MaxStamina;
             InputData = new InputData();
 
-            // 3. 实例化所有系统控制器与驱动器 
+            // 2. 实例化所有系统控制器与驱动器 
             StateMachine = new StateMachine();
             InterruptProcessor = new GlobalInterruptProcessor(this);
             MotionDriver = new MotionDriver(this);
             EquipmentDriver = new EquipmentDriver(this);
-            _intentProcessorPipeline = new IntentProcessorPipeline(this);
             _characterStatusDriver = new CharacterStatusDriver(RuntimeData, Config);
+
+            // 3. 建立双管线并注入依赖 (直接传递 InputSourceRef)
+            InputPipeline = new InputPipeline(InputSourceRef, 0.05f, 0.03f, 0.2f);
+            MainProcessorPipeline = new MainProcessorPipeline(this, InputPipeline);
 
             // 4. 实例化子分层控制器
             InventoryController = new PlayerInventoryController(this);
             UpperBodyCtrl = new UpperBodyController(this);
-            _facialController = new FacialController(Animancer, Config, RuntimeData);
+            _facialController = new FacialController(this);
             _ikController = new IKController(this);
 
-            // 5. 装载状态字典 反射或枚举映射 分配独立内存实例
+            // 5. 装载状态字典 分配独立内存实例
             StateRegistry = new PlayerStateRegistry();
             if (Config != null && Config.Brain != null)
             {
@@ -122,258 +158,119 @@ namespace Characters.Player
             }
             else
             {
-                Debug.LogError("[PlayerController] 致命错误 未配置 PlayerSO 或 Brain");
-            }
-        }
-
-        /// <summary>
-        /// 初始化输入源 - 优先使用序列化的 InputSourceRef，其次自动获取组件
-        /// </summary>
-        private void InitializeInputSource()
-        {
-            if (InputSourceRef != null)
-            {
-                // 直接使用序列化的引用
-                try
-                {
-                    var inputSource = InputSourceRef as IInputSource;
-                    if (inputSource != null)
-                    {
-                        Debug.Log("[PlayerController] 输入源已通过编辑器赋值");
-                    }
-                    else
-                    {
-                        throw new System.InvalidCastException($"InputSourceRef 无法转换为 IInputSource");
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[PlayerController] 序列化的 InputSourceRef 类型转换失败: {ex.Message}");
-                    InputSourceRef = null;
-                    TryGetInputSourceComponent();
-                }
-            }
-            else
-            {
-                // 自动尝试获取组件
-                TryGetInputSourceComponent();
-            }
-        }
-
-        /// <summary>
-        /// 尝试自动获取 PlayerInputReader 组件
-        /// </summary>
-        private void TryGetInputSourceComponent()
-        {
-            try
-            {
-                InputSourceRef = GetComponent<PlayerInputReader>();
-                if (InputSourceRef != null)
-                {
-                    Debug.Log("[PlayerController] 输入源已通过自动获取组件");
-                }
-                else
-                {
-                    Debug.LogWarning("[PlayerController] 未找到 PlayerInputReader 组件，请检查");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[PlayerController] 自动获取输入源失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 初始化动画外观 - 优先使用序列化的 AnimationFacadeRef，其次自动获取组件
-        /// </summary>
-        private void InitializeAnimationFacade()
-        {
-            if (AnimationFacadeRef != null)
-            {
-                // 直接使用序列化的引用
-                try
-                {
-                    AnimFacade = AnimationFacadeRef;
-                    Debug.Log("[PlayerController] 动画外观已通过编辑器赋值");
-                }
-                catch
-                {
-                    Debug.LogWarning("[PlayerController] 序列化的 AnimationFacadeRef 初始化失败");
-                    AnimationFacadeRef = null;
-                    TryGetAnimationFacadeComponent();
-                }
-            }
-            else
-            {
-                // 自动尝试获取组件
-                TryGetAnimationFacadeComponent();
-            }
-        }
-
-        /// <summary>
-        /// 尝试自动获取 AnimancerFacade 组件
-        /// </summary>
-        private void TryGetAnimationFacadeComponent()
-        {
-            try
-            {
-                AnimationFacadeRef = GetComponent<AnimancerFacade>();
-                if (AnimationFacadeRef != null)
-                {
-                    AnimFacade = AnimationFacadeRef;
-                    Debug.Log("[PlayerController] 动画外观已通过自动获取组件");
-                }
-                else
-                {
-                    Debug.LogWarning("[PlayerController] 未找到 AnimancerFacade 组件，请检查");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[PlayerController] 自动获取动画外观失败: {ex.Message}");
+                Debug.LogError("[PlayerController] 致命错误：未配置 PlayerSO 或 Brain");
             }
         }
 
         private void Start()
         {
-            // 运行环境准备 这时所有脚本都已经 Awake 了
-
-            // 1. 初始化摄像机
             InitializeCamera();
-
-            // 2. 初始化动画系统层级与遮罩 必须在状态机启动前设置好
             SetupAnimationLayers();
-
-            // 初始化物品栏控制器 绑定数字键等输入
             InventoryController.Initialize();
-
-            // 3. 初始化初始装备
             InitializeEquipments();
-
-            // 正式运行
             BootUpStateMachines();
         }
 
         private void InitializeCamera()
         {
-            if (PlayerCamera == null && Camera.main != null)
-            {
-                PlayerCamera = Camera.main.transform;
-            }
+            if (PlayerCamera == null && Camera.main != null) PlayerCamera = Camera.main.transform;
             RuntimeData.CameraTransform = PlayerCamera;
         }
 
         private void SetupAnimationLayers()
         {
-            AnimFacade.SetLayerMask(1, Config.Core.UpperBodyMask);
-            AnimFacade.SetLayerMask(2, Config.Core.FacialMask);
+            if (AnimFacade != null)
+            {
+                AnimFacade.SetLayerMask(1, Config.Core.UpperBodyMask);
+                AnimFacade.SetLayerMask(2, Config.Core.FacialMask);
+            }
         }
 
         private void InitializeEquipments()
         {
-            // 支持最多三个调试装备 会放入快捷栏的前 3 格并自动装备第一个非空项
             EquippableItemSO[] defaults = new EquippableItemSO[] { DefaultEquipment1, DefaultEquipment2, DefaultEquipment3 };
             ItemInstance firstToEquip = null;
 
             for (int i = 0; i < defaults.Length; i++)
             {
-                var def = defaults[i];
-                if (def != null)
+                if (defaults[i] != null)
                 {
-                    var instance = new ItemInstance(def, 1);
+                    var instance = new ItemInstance(defaults[i], 1);
                     InventoryController.AssignItemToSlot(i, instance);
-
-                    if (firstToEquip == null)
-                    {
-                        firstToEquip = instance;
-                    }
+                    if (firstToEquip == null) firstToEquip = instance;
                 }
             }
 
-            // 自动装备第一个非空调试装备
-            if (firstToEquip != null)
-            {
-                RuntimeData.CurrentItem = firstToEquip;
-            }
+            if (firstToEquip != null) RuntimeData.CurrentItem = firstToEquip;
         }
 
         private void BootUpStateMachines()
         {
-            if (StateRegistry.InitialState != null)
-            {
-                StateMachine.Initialize(StateRegistry.InitialState);
-            }
-
-            if (UpperBodyCtrl.StateRegistry.InitialState != null)
-                UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
+            if (StateRegistry.InitialState != null) StateMachine.Initialize(StateRegistry.InitialState);
+            if (UpperBodyCtrl.StateRegistry.InitialState != null) UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
         }
 
-        // 逻辑与意图更新 (先于动画系统执行)
+        // 逻辑与意图更新 (在动画引擎运算之前)
         private void Update()
         {
             _lastState = StateMachine.CurrentState as PlayerBaseState;
 
-            // 0. 输入管线更新 最高优先级 所有系统必须通过此管线读取输入
-            _intentProcessorPipeline.UpdateInputPipeline();
+            // 输入管线更新
+            InputPipeline.Update();
 
-            // 1. 原始数据 逻辑意图 含视角 装备 瞄准 运动
-            _intentProcessorPipeline.UpdateIntentProcessors();
+            // 基于输入快照 向黑板写入纯意图
+            MainProcessorPipeline.UpdateIntentProcessors();
 
-            // 1.5 快捷栏装备切换 必须在意图管线后执行，这样才能消费数字键意图
+            // 快捷栏系统 基于最新意图处理切枪逻辑
             InventoryController.Update();
 
-            // 2. 被动状态更新 根据当前角色状态更新核心属性 体力 生命值等
+            // 被动属性更新 
             _characterStatusDriver.Update();
 
-            // 3. 逻辑意图 表现层参数 更新动画 Mixer 参数等
-            _intentProcessorPipeline.UpdateParameterProcessors();
+            // 计算动画参数
+            MainProcessorPipeline.UpdateParameterProcessors();
 
-            // 4. 状态逻辑更新 包含全局打断检测 状态流转逻辑
+            // 驱动状态机
             StateMachine.CurrentState?.LogicUpdate();
 
-            // 5. 更新上半身分层控制器 装备 瞄准 攻击等
+            // 驱动上半身状态机
             UpperBodyCtrl.Update();
 
-            // 6. 更新表情 读取黑板意图并播放瞬时表情
+            // 驱动表情系统
             _facialController?.Update();
 
-            // 调试状态切换记录
             if (statedebug && StateMachine.CurrentState != null && _lastState != null)
             {
                 if (StateMachine.CurrentState.GetType().Name != _lastState.GetType().Name)
                 {
-                    Debug.Log($"[状态切换] {_lastState.GetType().Name} -> {StateMachine.CurrentState.GetType().Name}");
+                    Debug.Log($"[State] {_lastState.GetType().Name} -> {StateMachine.CurrentState.GetType().Name}");
                 }
             }
         }
 
-        // 物理与表现对齐 (在动画引擎结算后执行)
+        // 一些设计说明.......
+        // 为什么角色的物理位移必须放在 LateUpdate？
+        // 因为我们的位移是通过 MotionDriver 去读取动画片段的NormalizedTime计算出来的
+        // Unity 的生命周期中 Animator 的骨骼结算发生在 Update 之后 LateUpdate 之前
+        // 如果把 PhysicsUpdate 放在 Update 里 拿到的永远是上一帧的动画时间 导致角色的物理位置永远比动作快一帧 
+        // 这会引发视觉上的抽搐问题 尤其是在低帧数的环境下 对那些带有转向的动画非常明显
+
+        //物理与表现层的更新 (在动画引擎运算之后)
         private void LateUpdate()
         {
-            // 注意：当代码执行到这里时，Unity内部已经自动推进了动画时间并结算了最新骨骼姿态。
-
-            // 8. 物理更新 先于逻辑处理 让 grounded vertical 等反映本帧真实物理结果
-            // （此时 MotionDriver 去读取时间，拿到的就是引擎刚刚推进好的最新时间戳）
+            // 物理更新
             StateMachine.CurrentState?.PhysicsUpdate();
 
-            // 9. 更新 IK 结算
-            // （必须在 PhysicsUpdate 之后执行，因为胶囊体移动完、骨骼摆放完，IK 贴合才能绝对精准不打滑）
+            // IK 结算
             _ikController.Update();
 
-            // 10. 清理帧尾标记 防止意图残留到下一帧的防御性编程
+            // 清除黑板的意图数据
             RuntimeData.ResetIntetnt();
-
-            // Debug.Log(RuntimeData.CurrentSpeed);
         }
 
         public void NotifyEquipmentChanged()
         {
             OnEquipmentChanged?.Invoke();
         }
-        //一些设计说明：
-        //为什么动画层的更新是反直觉的在物理更新之前？因为 我们的物理系统是死死咬合动画系统的归一化时间的
-        //之前的方案中 物理更新在前 导致骨骼的位置永远比物理位置慢一帧 造成了轻微的视觉问题
-        //尤其是在带有转向的动画 在低帧数的环境下 抽搐会更明显
-        //然鹅 unity并没有提供手动更新动画的选项 如果去修改时钟 可能会引发更多问题 故使用lateupdate
     }
 }

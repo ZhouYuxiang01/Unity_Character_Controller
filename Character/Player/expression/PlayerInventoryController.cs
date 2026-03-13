@@ -114,6 +114,9 @@ namespace Characters.Player.Expression
             if (_currentSlotIndex == slotIndex)
             {
                 Unequip();
+
+                // 消费对应的数字键输入 防止同帧重复触发
+                ConsumeHotbarKey(slotIndex);
                 return;
             }
 
@@ -122,6 +125,9 @@ namespace Characters.Player.Expression
             {
                 Debug.Log($"[Inventory] 槽位 {slotIndex + 1} 为空 -> 卸载");
                 Unequip();
+
+                // 消费对应的数字键输入
+                ConsumeHotbarKey(slotIndex);
                 return;
             }
 
@@ -129,10 +135,29 @@ namespace Characters.Player.Expression
             {
                 Debug.Log($"[Inventory] 意图切换 -> {targetInstance.BaseData.DisplayName}");
                 _player.RuntimeData.CurrentItem = targetInstance;
+
+                // 成功尝试装备后 消费对应的数字键输入
+                ConsumeHotbarKey(slotIndex);
             }
             else
             {
                 Debug.Log($"[Inventory] 槽位 {slotIndex + 1} 非可装备物品 -> 忽略");
+
+                // 即便忽略 也消费输入 防止重复触发
+                ConsumeHotbarKey(slotIndex);
+            }
+        }
+
+        private void ConsumeHotbarKey(int slotIndex)
+        {
+            if (_player == null || _player.InputPipeline == null) return;
+            switch (slotIndex)
+            {
+                case 0: _player.InputPipeline.ConsumeNumber1Pressed(); break;
+                case 1: _player.InputPipeline.ConsumeNumber2Pressed(); break;
+                case 2: _player.InputPipeline.ConsumeNumber3Pressed(); break;
+                case 3: _player.InputPipeline.ConsumeNumber4Pressed(); break;
+                case 4: _player.InputPipeline.ConsumeNumber5Pressed(); break;
             }
         }
 

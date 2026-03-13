@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Characters.Player.Processing
 {
+    // 视角旋转处理器 负责维护视觉朝向的权威方向
     public class ViewRotationProcessor
     {
         private readonly PlayerRuntimeData _data;
@@ -16,16 +17,16 @@ namespace Characters.Player.Processing
 
         public void Update(in ProcessedInputData input)
         {
-            // 拿到这一帧的原始增量 (Mouse Delta 或 摇杆输入)
+            // 拿到这一帧的原始增量
             Vector2 lookInput = input.Look;
 
             if (lookInput.sqrMagnitude > 0.000001f)
             {
-                // 【核心修复】：直接把增量累加进 Yaw 和 Pitch 里！绝对不要去减去 lastLook！
+                // 把增量累加进 Yaw 和 Pitch 里
                 _data.ViewYaw += lookInput.x * _config.Core.LookSensitivity.x;
                 _data.ViewPitch += lookInput.y * _config.Core.LookSensitivity.y;
 
-                // 钳制 Pitch (上下看) 并让 Yaw (左右转) 在 360 度内循环
+                // 钳制 Pitch 并让 Yaw 在 360 度内循环
                 _data.ViewPitch = Mathf.Clamp(_data.ViewPitch, _config.Core.PitchLimits.x, _config.Core.PitchLimits.y);
                 _data.ViewYaw = Mathf.Repeat(_data.ViewYaw, 360f);
             }
