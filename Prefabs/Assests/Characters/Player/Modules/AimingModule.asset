@@ -15,7 +15,7 @@ MonoBehaviour:
   AimSensitivity: 1
   AimWalkSpeed: 1.5
   AimJogSpeed: 2.5
-  AimSprintSpeed: 5
+  AimSprintSpeed: 4
   AimRotationSmoothTime: 0.04
   AimXAnimBlendSmoothTime: 0.25
   AimYAnimBlendSmoothTime: 0.25

@@ -11,8 +11,8 @@ namespace Characters.Player.Processing
     /// </summary>
     public class InputPipeline
     {
-        // 输入源接口
-        private readonly IInputSource _inputSource;
+        // 输入源接口（现在使用具体基类以便读取序列化配置）
+        private readonly InputSourceBase _inputSource;
 
         // 0 GC 堆内存容器，在构造时预分配，全生命周期复用
         private InputData _inputData;
@@ -37,11 +37,12 @@ namespace Characters.Player.Processing
         /// </summary>
         public InputData Current => _inputData;
 
-        public InputPipeline(IInputSource inputSource, float inputFlickerBuffer = 0.05f, float lookSmoothTime = 0.03f, float actionBufferTime = 0.2f)
+        // 构造函数只接受 InputSourceBase，其他配置从 inputSource 注入；如果 inputSource 未配置则使用其字段的默认值
+        public InputPipeline(InputSourceBase inputSource)
         {
             _inputSource = inputSource;
-            _inputFlickerBuffer = inputFlickerBuffer;
-            _actionBufferTime = actionBufferTime;
+            _inputFlickerBuffer = _inputSource.InputFlickerBuffer;
+            _actionBufferTime = _inputSource.ActionBufferTime;
 
             // 管线作为数据的绝对源头 自行分配容器 避免GC
             _inputData = new InputData();

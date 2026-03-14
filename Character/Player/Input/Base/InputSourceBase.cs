@@ -10,6 +10,13 @@ namespace Characters.Player.Input
     /// </summary>
     public abstract class InputSourceBase : MonoBehaviour, IInputSource
     {
+        [Header("Input Timing Settings")]
+        [Tooltip("WASD 等移动轴的防抖缓存时间（秒），用于抖动抑制）")]
+        public float InputFlickerBuffer = 0.05f;
+
+        [Tooltip("动作按键的缓存时间（秒），按下后该按键在此时间内被视为已按下，便于输入缓冲）")]
+        public float ActionBufferTime = 0.2f;
+
         /// <summary>
         /// 由具体实现类重写 负责获取原始输入数据
         /// </summary>

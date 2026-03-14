@@ -141,7 +141,8 @@ namespace Characters.Player
             _characterStatusDriver = new CharacterStatusDriver(RuntimeData, Config);
 
             // 3. 建立双管线并注入依赖 (直接传递 InputSourceRef)
-            InputPipeline = new InputPipeline(InputSourceRef, 0.05f, 0.03f, 0.2f);
+            // InputPipeline 构造函数已更改为只接受 InputSourceBase，所有 timing 配置从 InputSourceRef 注入
+            InputPipeline = new InputPipeline(InputSourceRef);
             MainProcessorPipeline = new MainProcessorPipeline(this, InputPipeline);
 
             // 4. 实例化子分层控制器
