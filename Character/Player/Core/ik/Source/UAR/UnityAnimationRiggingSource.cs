@@ -114,5 +114,32 @@ namespace Characters.Player.Core
                     break;
             }
         }
+        public override void EnableAllIK()
+        {
+            if (_rigBuilder != null)
+            {
+                _rigBuilder.enabled = true;
+            }
+            else
+            {
+                if (_leftHandIK != null) _leftHandIK.enabled = true;
+                if (_rightHandIK != null) _rightHandIK.enabled = true;
+                if (_headLookAtIK != null) _headLookAtIK.enabled = true;
+            }
+        }
+
+        public override void DisableAllIK()
+        {
+            if (_rigBuilder != null)
+            {
+                _rigBuilder.enabled = false;
+            }
+            else
+            {
+                if (_leftHandIK != null) _leftHandIK.enabled = false;
+                if (_rightHandIK != null) _rightHandIK.enabled = false;
+                if (_headLookAtIK != null) _headLookAtIK.enabled = false;
+            }
+        }
     }
 }

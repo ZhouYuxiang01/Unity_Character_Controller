@@ -30,6 +30,8 @@ namespace Characters.Player.Expression
         private float _lookAtWeight;
         private float _lookAtVelocity;
 
+        private bool _isIKActive = true;
+
         public IKController(PlayerController player)
         {
             _player = player;
@@ -39,14 +41,35 @@ namespace Characters.Player.Expression
         }
 
         // 每帧调用一次，由 PlayerController 在主循环中更新
-        // 优先级从高到低：Warp IK 拦截 -> Aim 基准点更新 -> 左手 IK -> 右手 IK -> 头部注视
+        // 优先级从高到低：LOD拦截 -> Warp IK 拦截 -> Aim 基准点更新 -> 左手 IK -> 右手 IK -> 头部注视
         public void Update()
         {
             if (_ikSource == null) return;
 
-            // =================================================================================
-            // 0. 翻越/攀爬 Warp IK 拦截 (最高优先级)
-            // =================================================================================
+            // LOD 性能降级拦截
+            if (_data.CurrentLOD > CharacterLOD.High)
+            {
+                // 如果当前 IK 是活跃状态 执行一次硬关闭 然后锁死
+                if (_isIKActive)
+                {
+                    ResetAllIKWeights();        // 内部平滑值清零 防止唤醒时的跳变
+                    _ikSource.DisableAllIK();   // 掐断底层组件Update
+                    _isIKActive = false;
+                }
+                return; 
+            }
+            else
+            {
+                // 高 LOD 状态 唤醒组件
+                if (!_isIKActive)
+                {
+                    _ikSource.EnableAllIK();    
+                    _isIKActive = true;
+                }
+            }
+
+            // 翻越/攀爬WarpIK更新
+
             if (_data.IsWarping)
             {
                 float warpHandWeight = _data.ActiveWarpData.HandIKWeightCurve.Evaluate(_data.NormalizedWarpTime);
@@ -59,9 +82,7 @@ namespace Characters.Player.Expression
                 return;
             }
 
-            // =================================================================================
-            // 1. AimIK 基准点 (Muzzle) 更新
-            // =================================================================================
+            // AimIK基准点更新
             if (_data.IsAiming)
             {
                 if (_data.CurrentAimReference != _lastAimReference)
@@ -71,9 +92,7 @@ namespace Characters.Player.Expression
                 }
             }
 
-            // =================================================================================
-            // 2. 左手 IK 处理
-            // =================================================================================
+            // 左手 IK 处理
             float targetLeftW = _data.WantsLeftHandIK ? 1f : 0f;
             _leftHandWeight = Mathf.SmoothDamp(_leftHandWeight, targetLeftW, ref _leftHandVelocity, 0.15f);
 
@@ -85,9 +104,7 @@ namespace Characters.Player.Expression
                 if (_leftHandWeight < 0.01f) _leftHandVelocity = 0f;
             }
 
-            // =================================================================================
-            // 3. 右手 IK 处理
-            // =================================================================================
+            // 右手 IK 处理
             float targetRightW = _data.WantsRightHandIK ? 1f : 0f;
             _rightHandWeight = Mathf.SmoothDamp(_rightHandWeight, targetRightW, ref _rightHandVelocity, 0.15f);
 
@@ -99,11 +116,8 @@ namespace Characters.Player.Expression
                 if (_rightHandWeight < 0.01f) _rightHandVelocity = 0f;
             }
 
-            // =================================================================================
-            // 4. 头部注视 / 武器瞄准 (LookAt / Aim) 统一处理
-            // =================================================================================
+            // 头部注视 / 武器瞄准IK统一处理
             float targetLookW = _data.WantsLookAtIK ? 1f : 0f;
-            // 将淡出速度从0.2f提升到0.08f，加快AimIK权重淡出
             _lookAtWeight = Mathf.SmoothDamp(_lookAtWeight, targetLookW, ref _lookAtVelocity, 0.2f);
 
             if (_lookAtWeight > 0.01f)
@@ -133,6 +147,26 @@ namespace Characters.Player.Expression
                     _currentLookAtPosition = _player.transform.position + _player.transform.forward * 5f;
                 }
             }
+        }
+
+        private void ResetAllIKWeights()
+        {
+            // 如果已经被彻底关干净了，就不重复执行
+            if (_leftHandWeight == 0f && _rightHandWeight == 0f && _lookAtWeight == 0f) return;
+
+            // 内部平滑速度和当前权重立刻清零 
+            _leftHandWeight = 0f;
+            _rightHandWeight = 0f;
+            _lookAtWeight = 0f;
+            _leftHandVelocity = 0f;
+            _rightHandVelocity = 0f;
+            _lookAtVelocity = 0f;
+
+            // 向底层传达归零指令（确保底层在被瘫痪的前一刻，内部参数已经归零）
+            _ikSource.UpdateIKWeight(IKTarget.LeftHand, 0f);
+            _ikSource.UpdateIKWeight(IKTarget.RightHand, 0f);
+            _ikSource.UpdateIKWeight(IKTarget.HeadLook, 0f);
+            _ikSource.UpdateIKWeight(IKTarget.AimReference, 0f);
         }
     }
 }

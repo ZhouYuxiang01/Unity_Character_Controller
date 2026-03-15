@@ -77,6 +77,9 @@ namespace Characters.Player
         // 状态注册表
         public PlayerStateRegistry StateRegistry { get; private set; }
 
+        //仲裁器(后期需要注册表化)
+        public LODArbiter LodArbiter { get; private set; }
+
         //调试用缓存
         private PlayerBaseState _lastState;
         public event System.Action OnEquipmentChanged;
@@ -139,6 +142,7 @@ namespace Characters.Player
             MotionDriver = new MotionDriver(this);
             EquipmentDriver = new EquipmentDriver(this);
             _characterStatusDriver = new CharacterStatusDriver(RuntimeData, Config);
+            LodArbiter = new LODArbiter(this);
 
             // 3. 建立双管线并注入依赖 (直接传递 InputSourceRef)
             // InputPipeline 构造函数已更改为只接受 InputSourceBase，所有 timing 配置从 InputSourceRef 注入
@@ -215,6 +219,9 @@ namespace Characters.Player
         private void Update()
         {
             _lastState = StateMachine.CurrentState as PlayerBaseState;
+
+            // LOD 仲裁
+            LodArbiter.Arbitrate();
 
             // 输入管线更新
             InputPipeline.Update();

@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e92b4698a9c1cce4f9e932743fcc4493, type: 3}
   m_Name: CoreModule
   m_EditorClassIdentifier: 
+  LODCheckInterval: 2
+  MediumLODDistance: 15
+  LowLODDistance: 30
   LookSensitivity: {x: 10, y: 10}
   PitchLimits: {x: -70, y: 70}
   RotationSmoothTime: 0.12
@@ -22,30 +25,6 @@ MonoBehaviour:
   ReboundForce: -5
   AirControl: 1
   MoveSpeedSmoothTime: 0.25
-  SprintBlendCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.3
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
   XAnimBlendSmoothTime: 0.3
   YAnimBlendSmoothTime: 0.3
   MaxStamina: 1000

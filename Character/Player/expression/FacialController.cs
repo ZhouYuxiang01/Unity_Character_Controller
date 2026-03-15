@@ -63,6 +63,20 @@ namespace Characters.Player.Expression
         {
             if (_data == null || _config == null || _config.Emj == null) return;
 
+            // lod拦截
+            // 当处于中远距离（Medium/Low）时 强行关闭面部层的权重并掐断逻辑
+            if (_data.CurrentLOD > CharacterLOD.High)
+            {
+                // 将动画层权重归零 Animancer 在层权重为0时会大幅降低评估开销
+                if (_layer.Weight > 0f) _layer.Weight = 0f;
+                return;
+            }
+            else
+            {
+                // 恢复近距离的表现力
+                if (_layer.Weight < 1f) _layer.Weight = 1f;
+            }
+
             // 允许瞬时表情相互打断 直接覆盖播放并核销输入缓存
             if (_data.WantsExpression1)
             {

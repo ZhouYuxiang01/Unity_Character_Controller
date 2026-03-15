@@ -83,13 +83,6 @@ namespace Characters.Player.States
                 return;
             }
 
-            if (data.WantsToJump)
-            {
-                data.NextStatePlayOptions = config.LocomotionAnims.FadeInJumpOptions;
-                player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
-                return;
-            }
-
             if (data.CurrentLocomotionState != _currentLocomotionState)
             {
                 SwitchLoopAnimation(data.CurrentLocomotionState);

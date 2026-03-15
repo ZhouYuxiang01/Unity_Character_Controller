@@ -8,8 +8,23 @@ namespace Characters.Player.Data
     [CreateAssetMenu(fileName = "CoreModule", menuName = "BBBNexus/Player/Modules/Core Module")]
     public class CoreModuleSO : ScriptableObject
     {
+        #region LOD 性能降级设置
+
+        [Header("性能降级设置 (LOD) - 决定同屏AI的性能消耗")]
+
+        [Tooltip("LOD 距离与状态检测的间隔时间(秒)")]
+        public float LODCheckInterval = 0.5f;
+
+        [Tooltip("大于此距离进入 Medium 级别：关闭面部表情与精细手脚 IK")]
+        public float MediumLODDistance = 15f;
+
+        [Tooltip("大于此距离进入 Low 级别：动画底层进入剔除")]
+        public float LowLODDistance = 30f;
+
+        #endregion
+
         #region Movement & View 移动与视角 - 根运动映射层 决定玩家如何响应输入
-        
+
         [Header("视角与转向 (View & Rotation) - 相机系统的心脏")]
         
         [Tooltip("鼠标灵敏度 X=水平转向速率 Y=垂直俯仰速率 单位：度/帧 建议150左右")]

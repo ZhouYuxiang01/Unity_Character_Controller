@@ -49,7 +49,8 @@ namespace Characters.Player.States
             });
         }
 
-        // 状态逻辑 检测瞄准 空闲 跳跃等打断条件
+        // 状态逻辑 检测瞄准 空闲等打断条件
+        // 跳跃由全局拦截器统一处理，避免状态内重复判断
         protected override void UpdateStateLogic()
         {
             if (data.IsAiming)
@@ -59,11 +60,6 @@ namespace Characters.Player.States
             else if (data.CurrentLocomotionState == LocomotionState.Idle)
             {
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerIdleState>());
-            }
-            else if (data.WantsToJump)
-            {
-                data.NextStatePlayOptions = config.LocomotionAnims.FadeInJumpOptions;
-                player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
             }
             // 如果运动状态在起步中途改变 切到循环状态让其处理状态转换
             else if (data.CurrentLocomotionState != _startLocomotionState)

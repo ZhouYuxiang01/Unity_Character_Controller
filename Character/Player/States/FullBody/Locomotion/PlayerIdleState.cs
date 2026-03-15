@@ -6,7 +6,7 @@ using Characters.Player.Animation;
 namespace Characters.Player.States
 {
     // 玩家空闲状态 
-    // 负责播放空闲动画 并检测移动 跳跃等输入意图触发状态切换 
+    // 负责播放空闲动画 并检测移动等输入意图触发状态切换
     [Serializable]
     public class PlayerIdleState : PlayerBaseState
     {
@@ -18,7 +18,8 @@ namespace Characters.Player.States
             ChooseOptionsAndPlay(config.LocomotionAnims.IdleAnim);
         }
 
-        // 更新状态逻辑 检测移动 跳跃意图 触发状态切换
+        // 更新状态逻辑 检测移动 触发状态切换
+        // 跳跃由全局拦截器统一处理，避免各状态重复判断
         protected override void UpdateStateLogic()
         {
             if (data.CurrentLocomotionState != LocomotionState.Idle)
@@ -41,12 +42,6 @@ namespace Characters.Player.States
 
                 player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerMoveStartState>());
                 return;
-            }
-
-            if (data.WantsToJump)
-            {
-                data.NextStatePlayOptions = config.LocomotionAnims.FadeInJumpOptions;
-                player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
             }
         }
 

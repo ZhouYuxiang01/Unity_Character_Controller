@@ -58,15 +58,10 @@ namespace Characters.Player.States
             data.ExpectedFootPhase = _currentClip.EndPhase;
         }
 
-        // 状态逻辑 一般不响应切换 避免打断缓冲 只允许高优先级 跳跃
+        // 状态逻辑 一般不响应切换 避免打断缓冲
+        // 跳跃由全局拦截器统一处理
         protected override void UpdateStateLogic()
         {
-            if (data.WantsToJump)
-            {
-                player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
-                return;
-            }
-
             // 如果权威运动状态不为 Idle 允许按 EndTime 提前切回 MoveLoop
             if (!_endTimeTriggered && data.CurrentLocomotionState != LocomotionState.Idle && 
                 _currentClip != null && _currentClip.EndTime > 0f && AnimFacade.CurrentTime >= _currentClip.EndTime)

@@ -118,5 +118,16 @@ namespace Characters.Player.Core.IK.Source
                     break;
             }
         }
+        public override void EnableAllIK()
+        {
+            if (_fbbik != null) _fbbik.enabled = true;
+            if (_aimIK != null) _aimIK.enabled = true;
+        }
+
+        public override void DisableAllIK()
+        {
+            if (_fbbik != null) _fbbik.enabled = false;
+            if (_aimIK != null) _aimIK.enabled = false;
+        }
     }
 }

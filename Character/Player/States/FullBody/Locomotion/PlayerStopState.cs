@@ -34,11 +34,6 @@ namespace Characters.Player.States
                 return;
             }
 
-            if (data.WantsToJump)
-            {
-                data.NextStatePlayOptions = config.LocomotionAnims.FadeInJumpOptions;
-                player.StateMachine.ChangeState(player.StateRegistry.GetState<PlayerJumpState>());
-            }
         }
 
         // 物理更新 停止状态下仍需更新重力和接地检测

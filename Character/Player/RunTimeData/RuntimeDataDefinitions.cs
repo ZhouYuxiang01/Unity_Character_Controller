@@ -4,7 +4,12 @@ using UnityEngine;
 
 namespace Characters.Player.Data
 {
-
+    public enum CharacterLOD
+    {
+        High,
+        Medium,
+        Low 
+    }
     #region Movement & Direction Enums
 
     /// <summary>
