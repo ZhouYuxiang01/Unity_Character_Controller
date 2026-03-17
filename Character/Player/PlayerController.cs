@@ -164,7 +164,6 @@ namespace BBBNexus
         {
             InitializeCamera();
             SetupAnimationLayers();
-            InventoryController.Initialize();
             InitializeEquipments();
             BootUpStateMachines();
         }
@@ -186,6 +185,8 @@ namespace BBBNexus
 
         private void InitializeEquipments()
         {
+            InventoryController.Initialize();
+
             EquippableItemSO[] defaults = new EquippableItemSO[] { DefaultEquipment1, DefaultEquipment2, DefaultEquipment3 };
             ItemInstance firstToEquip = null;
 
@@ -213,18 +214,23 @@ namespace BBBNexus
         {
             _lastState = StateMachine.CurrentState as PlayerBaseState;
 
-            ArbiterPipeline?.ProcessUpdateArbiters();
+            ArbiterPipeline.ProcessUpdateArbiters();
 
             InputPipeline.Update();
+
             MainProcessorPipeline.UpdateIntentProcessors();
+
             InventoryController.Update();
+
             _characterStatusDriver.Update();
+
             MainProcessorPipeline.UpdateParameterProcessors();
 
-            StateMachine.CurrentState?.LogicUpdate();
+            StateMachine.CurrentState.LogicUpdate();
 
             UpperBodyCtrl.Update();
-            _facialController?.Update();
+
+            _facialController.Update();
 
             if (statedebug && StateMachine.CurrentState != null && _lastState != null)
             {
@@ -261,9 +267,12 @@ namespace BBBNexus
 
         public void RequestOverride(in ActionRequest request, bool flushImmediately = true)
         {
-            var arbiter = ArbiterPipeline?.Action;
-            if (arbiter != null)
-                arbiter.SubmitRequest(in request, flushImmediately);
+            // 不再直接调用 ActionArbiter 的外部方法；统一写入黑板，仲裁器只读。
+            RuntimeData.ActionArbitration.Submit(in request);
+
+            // 兼容旧调用点：如果要求立即刷新，则直接跑一次仲裁。
+            if (flushImmediately)
+                ArbiterPipeline?.Action?.Arbitrate();
         }
 
         #region IDamageable 接口实现

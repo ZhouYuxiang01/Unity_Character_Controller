@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace BBBNexus
 {
@@ -7,7 +8,7 @@ namespace BBBNexus
         Auto,
         Keep,
     }
-
+    [Serializable]
     public struct ActionRequest
     {
         public AnimationClip Clip;

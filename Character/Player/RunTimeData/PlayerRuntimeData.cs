@@ -42,8 +42,34 @@ namespace BBBNexus
             }
         }
 
+        /// <summary>
+        /// 动作仲裁请求（帧级）：由各系统写入，ActionArbiter 只读取并应用。
+        /// 规则：同一帧内仅保留 Priority 最高的请求。
+        /// </summary>
+        public struct ActionArbitrationContext
+        {
+            public bool HasRequest;
+            public ActionRequest HighestPriorityRequest;
+
+            public void Clear()
+            {
+                HasRequest = false;
+                HighestPriorityRequest = default;
+            }
+
+            public void Submit(in ActionRequest request)
+            {
+                if (!HasRequest || request.Priority > HighestPriorityRequest.Priority)
+                {
+                    HighestPriorityRequest = request;
+                    HasRequest = true;
+                }
+            }
+        }
+
         public OverrideContext Override;
         public ArbitrationFlags Arbitration;
+        public ActionArbitrationContext ActionArbitration;
 
         public PlayerRuntimeData(PlayerController player)
         {
@@ -52,6 +78,7 @@ namespace BBBNexus
             CurrentStamina = player.Config.Core.MaxStamina;
             Override.Clear();
             Arbitration.Clear();
+            ActionArbitration.Clear();
         }
 
         #region 核心状态
@@ -338,6 +365,9 @@ namespace BBBNexus
             WantsExpression2 = false;
             WantsExpression3 = false;
             WantsExpression4 = false;
+
+            // 帧级仲裁请求：每帧清理，避免持续触发。
+            ActionArbitration.Clear();
         }
 
         #endregion

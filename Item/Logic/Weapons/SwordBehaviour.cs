@@ -10,6 +10,7 @@ namespace BBBNexus
     //  2) 装备完成后上半身不播放任何待机动画 仅当攻击时才激活 
     //  3) 攻击依次循环 Attack1 -> Attack2 -> Attack3 
     //  4) 攻击中再次按下按键可立即连段 无冷却时间 
+    //  5) 攻击动画由OverrideState接管播放 剑只负责发送接管请求
     public class SwordBehaviour : MonoBehaviour, IHoldableItem
     {
         // 内部微型状态机 管理剑的装备 待机 攻击 卸载四个阶段 
@@ -203,20 +204,19 @@ namespace BBBNexus
         // 启动新攻击或接上一个连击 
         private void StartOrChainAttack()
         {
+            Debug.Log("qqqq");
             // 验证必要的对象 
-            if (_config == null || _player == null || _player.AnimFacade == null)
+            if (_config == null || _player == null)
                 return;
 
             // 装备与卸载期间绝对禁止攻击 
             if (_phase == SwordPhase.Equipping || _phase == SwordPhase.Unequipping)
                 return;
 
-            // 尝试获取当前连击段的动画 失败则终止 
-            if (!TryGetAttackClip(_comboIndex, out var clip, out var opt))
+            // 获取当前连击段的ActionRequest配置 失败则终止
+            var request = _config.GetAttackRequest(_comboIndex);
+            if (request.Clip == null)
                 return;
-
-            // 确保上半身层权重足够 攻击动画才能显示 
-            _player.AnimFacade.SetLayerWeight(UpperBodyLayer, 1f, 0.05f);
 
             // 每次新攻击递增令牌 使旧的结束回调失效 
             // 这防止连段时旧动画的回调把新攻击的状态打回 Idle 导致连击链断裂 
@@ -226,11 +226,6 @@ namespace BBBNexus
             // OnEnd 回调中只读字段 不再捕获局部变量 避免闭包分配
             _attackTokenSnapshot = _attackToken;
 
-            // 播放攻击动画到上半身层 
-            AnimPlayOptions options = opt;
-            options.Layer = UpperBodyLayer;
-            _player.AnimFacade.PlayTransition(clip, options);
-
             // 转入攻击阶段 
             _phase = SwordPhase.Attacking;
 
@@ -239,8 +234,17 @@ namespace BBBNexus
                 AudioSource.PlayClipAtPoint(_config.SwingSound, transform.position);
 
             // 绑定动画结束回调
-            // 重要改动：这里传入缓存的成员方法引用 不创建 lambda
-            _player.AnimFacade.SetOnEndCallback(_onAttackAnimEndCached, UpperBodyLayer);
+            // 注意：这里仅用于监听OverrideState播放完毕后的状态转移
+            // 实际的动画播放由OverrideState负责 不在这里播放
+            if (_player.AnimFacade != null)
+                _player.AnimFacade.SetOnEndCallback(_onAttackAnimEndCached, 0);
+
+            // 发送接管请求 直接使用SwordSO中配置的ActionRequest
+            // 关键修复：需要立刻刷新仲裁，否则本帧可能不会进入 OverrideState，表现为“没有播放攻击动画”
+            if (_player.RuntimeData != null)
+            {
+                _player.RequestOverride(request, flushImmediately: true);
+            }
 
             // 立即递增连击索引 使得攻击中再次按下会执行下一段 
             _comboIndex = (_comboIndex + 1) % 3;
@@ -257,57 +261,27 @@ namespace BBBNexus
             // 这里使用的是字段快照 不存在闭包
             if (_attackTokenSnapshot != _attackToken) return;
 
-            // 攻击自然结束 转入待机并淡出上半身层
+            // 攻击自然结束 转入待机
             _phase = SwordPhase.Idle;
-            _player.AnimFacade.SetLayerWeight(UpperBodyLayer, 0f, DefaultFadeOut);
         }
 
         // 取消当前攻击 用于闪避 翻滚等高优先级动作 
         private void CancelAttack()
         {
-            if (_player == null || _player.AnimFacade == null)
+            if (_player == null)
                 return;
 
             // 递增令牌 使所有旧回调失效 
             _attackToken++;
 
             // 清空所有回调 
-            _player.AnimFacade.ClearOnEndCallback(UpperBodyLayer);
+            if (_player.AnimFacade != null)
+                _player.AnimFacade.ClearOnEndCallback(0);
 
-            // 如果正在攻击则转入待机 并淡出上半身层 
+            // 如果正在攻击则转入待机 
             if (_phase == SwordPhase.Attacking)
             {
                 _phase = SwordPhase.Idle;
-                _player.AnimFacade.SetLayerWeight(UpperBodyLayer, 0f, DefaultFadeOut);
-            }
-        }
-
-        // 根据连击索引查询对应的攻击动画与参数 
-        private bool TryGetAttackClip(int index, out ClipTransition clip, out AnimPlayOptions options)
-        {
-            clip = null;
-            options = AnimPlayOptions.Default;
-
-            // 根据索引返回不同的动画 
-            switch (index)
-            {
-                case 0:
-                    // 第一段攻击 
-                    clip = _config.AttackAnim1;
-                    options = _config.AttackAnimOptions1;
-                    return clip != null && clip.Clip != null;
-                case 1:
-                    // 第二段攻击 
-                    clip = _config.AttackAnim2;
-                    options = _config.AttackAnimOptions2;
-                    return clip != null && clip.Clip != null;
-                case 2:
-                    // 第三段攻击 
-                    clip = _config.AttackAnim3;
-                    options = _config.AttackAnimOptions3;
-                    return clip != null && clip.Clip != null;
-                default:
-                    return false;
             }
         }
     }

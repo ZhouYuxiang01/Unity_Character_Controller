@@ -204,17 +204,13 @@ namespace BBBNexus
         {
             if (clip == null) return;
 
-            if (_animancer.Animator != null)
-            {
-                _fullBodyRootMotionEnabled = true;
-                _animancer.Animator.applyRootMotion = true;
-            }
+            _fullBodyRootMotionEnabled = true;
+            _animancer.Animator.applyRootMotion = true;
 
-            const int layerIndex = 0;
-            ClearOnEndCallback(layerIndex);
+            ClearOnEndCallback(0);
 
             SetLayerWeight(1, 0f, fadeDuration);
-            _animancer.Layers[layerIndex].Play(clip, fadeDuration);
+            _animancer.Layers[0].Play(clip, fadeDuration);
         }
 
         public override void StopFullBodyAction()

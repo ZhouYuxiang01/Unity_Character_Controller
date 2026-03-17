@@ -4,37 +4,17 @@ namespace BBBNexus
 {
     /// <summary>
     /// 动作仲裁器
-    /// 负责接收所有外部/内部的高权限动作请求，仲裁优先级，并强制驱动状态机
+    /// 只读取黑板上（帧级）的最高优先级动作请求，并决定是否应用。
     /// </summary>
     public class ActionArbiter
     {
         private readonly PlayerController _player;
-
-        // 缓存本帧最高优先级的请求
-        private bool _hasPendingRequest;
-        private ActionRequest _highestPriorityRequest;
+        private readonly PlayerRuntimeData _data;
 
         public ActionArbiter(PlayerController player)
         {
             _player = player;
-        }
-
-        /// <summary>
-        /// 提交动作请求
-        /// </summary>
-        public void SubmitRequest(in ActionRequest request, bool flushImmediately = false)
-        {
-            // 挑出本帧优先级最高的请求
-            if (!_hasPendingRequest || request.Priority > _highestPriorityRequest.Priority)
-            {
-                _highestPriorityRequest = request;
-                _hasPendingRequest = true;
-            }
-
-            if (flushImmediately)
-            {
-                Arbitrate();
-            }
+            _data = player.RuntimeData;
         }
 
         /// <summary>
@@ -42,23 +22,21 @@ namespace BBBNexus
         /// </summary>
         public void Arbitrate()
         {
-            if (!_hasPendingRequest) return;
+            if (!_data.ActionArbitration.HasRequest) return;
 
+            var request = _data.ActionArbitration.HighestPriorityRequest;
             int currentResistance = GetCurrentOverrideResistance();
 
-            // 仲裁：如果请求的优先级大于当前状态的霸体/抗性，则强切！
-            if (_highestPriorityRequest.Priority > currentResistance)
+            // 仲裁：如果请求的优先级大于当前状态的抗打断等级，强制进入 OverrideState。
+            if (request.Priority > currentResistance)
             {
-                _player.RuntimeData.Override.IsActive = true;
-                _player.RuntimeData.Override.Request = _highestPriorityRequest;
-                _player.RuntimeData.Override.ReturnState = _player.StateMachine.CurrentState;
+                _data.Override.IsActive = true;
+                _data.Override.Request = request;
+                _data.Override.ReturnState = _player.StateMachine.CurrentState;
 
                 var state = _player.StateRegistry.GetState<OverrideState>();
                 _player.StateMachine.ChangeState(state);
             }
-
-            // 仲裁结束，清空本帧缓存
-            _hasPendingRequest = false;
         }
 
         /// <summary>
@@ -71,7 +49,6 @@ namespace BBBNexus
             if (current is OverrideState s)
                 return s.CurrentPriority;
 
-            // 翻滚时的无敌帧，极难被打断
             if (current is PlayerRollState) return 100;
             if (current is PlayerDodgeState) return 80;
 

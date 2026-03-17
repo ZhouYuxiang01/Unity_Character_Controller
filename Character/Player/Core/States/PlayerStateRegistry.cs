@@ -12,7 +12,7 @@ namespace BBBNexus
         public PlayerBaseState InitialState { get; private set; }
 
         /// <summary>
-        /// 核心工厂方法：根据枚举名单，硬编码实例化状态并注入依赖！
+        /// 核心工厂方法：根据枚举名单，硬编码实例化状态并注入依赖
         /// </summary>
         public void InitializeFromBrain(PlayerBrainSO brain, PlayerController player)
         {
@@ -26,7 +26,7 @@ namespace BBBNexus
             {
                 var stateTypeEnum = brain.AvailableStates[i];
 
-                // 【核心解耦】：极其清爽的 switch 映射，直接调用带参构造！
+                // 直接调用带参构造
                 PlayerBaseState newState = stateTypeEnum switch
                 {
                     PlayerStateType.Idle => new PlayerIdleState(player),
@@ -42,6 +42,7 @@ namespace BBBNexus
                     PlayerStateType.Vault => new PlayerVaultState(player),
                     PlayerStateType.AimIdle => new PlayerAimIdleState(player),
                     PlayerStateType.AimMove => new PlayerAimMoveState(player),
+                    PlayerStateType.Override=> new OverrideState(player),
                     PlayerStateType.Death => new PlayerDeathState(player),
                     _ => null
                 };
@@ -55,7 +56,7 @@ namespace BBBNexus
                     }
 
                     // 凭什么启动状态必须是 Idle？如果我做个一出场就在天上掉落的角色呢？
-                    // 直接默认列表里的【第一个状态】作为启动状态！
+                    // 默认列表里的第一个状态作为启动状态
                     if (InitialState == null)
                     {
                         InitialState = newState;

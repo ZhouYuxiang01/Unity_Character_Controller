@@ -68,51 +68,24 @@ MonoBehaviour:
   EquipEndTime: 0.5
   AttackCooldown: 0.5
   EnableIK: 0
-  AttackAnim1:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 3094330708855449807, guid: 6b0c07f3c2cc3ac43a9453b5ec26152d, type: 3}
-    _NormalizedStartTime: NaN
-  AttackAnimOptions1:
-    Layer: 1
-    FadeDuration: -1
-    Speed: -1
-    NormalizedTime: -1
-    ForcePhaseSync: 0
-  AttackAnim2:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 3094330708855449807, guid: 408142c06e2d48c4db8065d1fbbcc8eb, type: 3}
-    _NormalizedStartTime: NaN
-  AttackAnimOptions2:
-    Layer: 1
-    FadeDuration: -1
-    Speed: -1
-    NormalizedTime: -1
-    ForcePhaseSync: 0
-  AttackAnim3:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 3094330708855449807, guid: beb43ecd0c676ec4ca7ee96c05c427be, type: 3}
-    _NormalizedStartTime: NaN
-  AttackAnimOptions3:
-    Layer: 1
-    FadeDuration: -1
-    Speed: -1
-    NormalizedTime: -1
-    ForcePhaseSync: 0
+  AttackRequest1:
+    Clip: {fileID: 0}
+    FadeDuration: 0
+    Priority: 0
+    ExitMode: 0
+    ApplyGravity: 0
+  AttackRequest2:
+    Clip: {fileID: 0}
+    FadeDuration: 0
+    Priority: 0
+    ExitMode: 0
+    ApplyGravity: 0
+  AttackRequest3:
+    Clip: {fileID: 0}
+    FadeDuration: 0
+    Priority: 0
+    ExitMode: 0
+    ApplyGravity: 0
   SwingSound: {fileID: 0}
   HitSound: {fileID: 0}
   AttackDamage: 10

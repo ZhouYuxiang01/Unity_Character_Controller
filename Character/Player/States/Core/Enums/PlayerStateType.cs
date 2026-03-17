@@ -18,7 +18,7 @@ namespace BBBNexus
         Vault,
         AimIdle,
         AimMove,
-        Action,
+        Override,
         Death
     }
 }
