@@ -4,7 +4,7 @@ namespace BBBNexus
 {
     // 翻滚系统配置模块 与闪避系统类似 但翻滚通常是更长的动画 需要更多时间恢复 
     // 翻滚可以用来躲避大范围伤害 也可以加速移动 取决于游戏设计 
-    [CreateAssetMenu(fileName = "RollModule", menuName = "BBBNexus/Player/Modules/Roll Module")]
+    [CreateAssetMenu(fileName = "RollSO", menuName = "BBBNexus/Player/Modules/RollSO")]
     public class RollSO : ScriptableObject
     {
         [Header("体力消耗 (Stamina Cost) - 每次翻滚的代价")]

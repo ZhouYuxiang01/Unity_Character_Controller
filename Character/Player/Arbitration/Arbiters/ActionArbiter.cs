@@ -4,7 +4,7 @@ namespace BBBNexus
 {
     /// <summary>
     /// 动作仲裁器
-    /// 只读取黑板上（帧级）的最高优先级动作请求，并决定是否应用。
+    /// 只读取黑板上（帧级）的最高优先级动作请求 并决定是否应用 
     /// </summary>
     public class ActionArbiter
     {
@@ -18,7 +18,7 @@ namespace BBBNexus
         }
 
         /// <summary>
-        /// 核心仲裁管线 (在 Update 最早期执行)
+        /// 核心仲裁管线  
         /// </summary>
         public void Arbitrate()
         {
@@ -27,7 +27,7 @@ namespace BBBNexus
             var request = _data.ActionArbitration.HighestPriorityRequest;
             int currentResistance = GetCurrentOverrideResistance();
 
-            // 仲裁：如果请求的优先级大于当前状态的抗打断等级，强制进入 OverrideState。
+            //  如果请求的优先级大于当前状态的抗打断等级 强制进入 OverrideState
             if (request.Priority > currentResistance)
             {
                 _data.Override.IsActive = true;
@@ -40,7 +40,7 @@ namespace BBBNexus
         }
 
         /// <summary>
-        /// 评估当前状态的“霸体抗打断”级别
+        /// 评估当前代理状态的抗打断级别
         /// </summary>
         private int GetCurrentOverrideResistance()
         {
@@ -52,7 +52,6 @@ namespace BBBNexus
             if (current is PlayerRollState) return 100;
             if (current is PlayerDodgeState) return 80;
 
-            // 普通跑跳状态毫无抗性
             return 0;
         }
     }

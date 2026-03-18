@@ -4,8 +4,8 @@ namespace BBBNexus
 {
     // 跳跃与落地模块 它统一管理所有竖直方向的运动 包括跳跃 二段跳 落地恢复等 
     // 这里的所有参数都会被重力系统持续查询 别乱改不然会造成怪异的物理表现 
-    [CreateAssetMenu(fileName = "JumpModule", menuName = "BBBNexus/Player/Modules/Jump & Landing Module")]
-    public class JumpModuleSO : ScriptableObject
+    [CreateAssetMenu(fileName = "JumpSO", menuName = "BBBNexus/Player/Modules/JumpSO")]
+    public class JumpSO : ScriptableObject
     {
         #region Jump & Double Jump 跳跃系统 - 竖直方向的冲量控制
 

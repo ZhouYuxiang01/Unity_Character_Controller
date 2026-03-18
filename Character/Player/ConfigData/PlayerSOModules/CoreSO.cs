@@ -5,8 +5,8 @@ namespace BBBNexus
 {
     // 核心功能模块 它是玩家基础系统的心脏 负责转接物理 视角 速度等底层参数 
     // 别乱改这里的数值 一个小数点的偏差就能让整个控制手感完全变样 
-    [CreateAssetMenu(fileName = "CoreModule", menuName = "BBBNexus/Player/Modules/Core Module")]
-    public class CoreModuleSO : ScriptableObject
+    [CreateAssetMenu(fileName = "CoreSO", menuName = "BBBNexus/Player/Modules/CoreSO")]
+    public class CoreSO : ScriptableObject
     {
         #region 基础游戏属性
         [Tooltip("生命值的上限")]
@@ -118,11 +118,6 @@ namespace BBBNexus
         [Tooltip("面部表情遮罩 只控制头部与脸部骨骼 避免影响身体其他部分")]
         public AvatarMask FacialMask;
         
-        [Tooltip("眨眼动画 循环播放 可用于心跳表现或其他周期动作")]
-        public ClipTransition BlinkAnim;
-        
-        [Tooltip("受伤脸部表情 瞬时播放 表示角色受伤的那一刻")]
-        public ClipTransition HurtFaceAnim;
         
         #endregion
 

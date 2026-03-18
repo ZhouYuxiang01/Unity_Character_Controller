@@ -1,10 +1,10 @@
+using System;
 using UnityEngine;
 
 namespace BBBNexus
 {
     /// <summary>
     /// 动画外观基类 - 所有动画外观类的抽象基类
-    /// 提供统一的序列化接口 支持在 Unity 编辑器中拖拽赋值
     /// 所有具体动画外观(如AnimancerFacade等)都应继承此类
     /// </summary>
     public abstract class AnimationFacadeBase : MonoBehaviour, IAnimationFacade
@@ -27,12 +27,22 @@ namespace BBBNexus
         /// <summary>
         /// 设置动画结束回调
         /// </summary>
-        public abstract void SetOnEndCallback(System.Action onEndAction, int layerIndex = 0);
+        public abstract void SetOnEndCallback(Action onEndAction, int layerIndex = 0);
 
         /// <summary>
         /// 清除动画结束回调
         /// </summary>
         public abstract void ClearOnEndCallback(int layerIndex = 0);
+
+        /// <summary>
+        /// 设置覆盖动画结束回调
+        /// </summary>
+        public abstract void SetOverrideOnEndCallback(Action onEndAction);
+
+        /// <summary>
+        /// 清除覆盖动画结束回调
+        /// </summary>
+        public abstract void ClearOverrideOnEndCallback();
 
         /// <summary>
         /// 设置动画层权重
@@ -47,7 +57,7 @@ namespace BBBNexus
         /// <summary>
         /// 添加指定时间的回调
         /// </summary>
-        public abstract void AddCallback(float normalizedTime, System.Action callback, int layerIndex = 0);
+        public abstract void AddCallback(float normalizedTime, Action callback, int layerIndex = 0);
 
         /// <summary>
         /// 获取当前播放时间(秒)

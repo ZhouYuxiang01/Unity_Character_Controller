@@ -20,6 +20,7 @@ namespace BBBNexus
         private readonly JumpOrVaultIntentProcessor _jumpOrVaultIntentProcessor;
         private readonly EojIntentProcessor _eojIntentProcessor;
         private readonly HotbarIntentProcessor _hotbarIntentProcessor;
+        private readonly ActionIntentProcessor _actionIntentProcessor;
 
         // 持有各参数处理器
         private readonly MovementParameterProcessor _movementParameterProcessor;
@@ -35,6 +36,7 @@ namespace BBBNexus
             _jumpOrVaultIntentProcessor = new JumpOrVaultIntentProcessor(_runtimeData, _config, player.transform);
             _eojIntentProcessor = new EojIntentProcessor(_runtimeData);
             _hotbarIntentProcessor = new HotbarIntentProcessor(_runtimeData);
+            _actionIntentProcessor = new ActionIntentProcessor(_runtimeData);
 
             _movementParameterProcessor = new MovementParameterProcessor(_runtimeData, _config, player.transform);
             _viewRotationProcessor = new ViewRotationProcessor(_runtimeData, _config);
@@ -54,6 +56,7 @@ namespace BBBNexus
             _jumpOrVaultIntentProcessor.Update(in inputSnapshot);
             _eojIntentProcessor.Update(in inputSnapshot);
             _hotbarIntentProcessor.Update(in inputSnapshot);
+            _actionIntentProcessor.Update(in inputSnapshot);
         }
 
         // 参数降维与混合树驱动运算

@@ -5,8 +5,8 @@ namespace BBBNexus
     // 基础移动意图处理器 
     public class LocomotionIntentProcessor
     {
-        private PlayerRuntimeData _data;
-        private PlayerSO _config;
+        private readonly PlayerRuntimeData _data;
+        private readonly PlayerSO _config;
 
         public LocomotionIntentProcessor(PlayerRuntimeData data, PlayerSO config)
         {

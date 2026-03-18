@@ -69,21 +69,21 @@ MonoBehaviour:
   AttackCooldown: 0.5
   EnableIK: 0
   AttackRequest1:
-    Clip: {fileID: 0}
+    Clip: {fileID: -203655887218126122, guid: ee0054fa7cd4d5d4f90e01dcec9ec03f, type: 3}
     FadeDuration: 0
-    Priority: 0
+    Priority: 10
     ExitMode: 0
     ApplyGravity: 0
   AttackRequest2:
-    Clip: {fileID: 0}
+    Clip: {fileID: -203655887218126122, guid: 8a12b15995c3ede44bf88518a1001804, type: 3}
     FadeDuration: 0
-    Priority: 0
+    Priority: 10
     ExitMode: 0
     ApplyGravity: 0
   AttackRequest3:
-    Clip: {fileID: 0}
+    Clip: {fileID: -203655887218126122, guid: e33b9a1b817851d4fa9a96c22c9ee972, type: 3}
     FadeDuration: 0
-    Priority: 0
+    Priority: 10
     ExitMode: 0
     ApplyGravity: 0
   SwingSound: {fileID: 0}

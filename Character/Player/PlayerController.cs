@@ -40,12 +40,15 @@ namespace BBBNexus
         public EquippableItemSO DefaultEquipment3;
         public bool statedebug = false;
 
+        [Header("--- 音频 (SFX) ---")]
+        [Tooltip("用于播放角色音效的 AudioSource（建议关闭 Loop）。")]
+        public AudioSource SfxSource;
+
         // 运行时核心引用
         public StateMachine StateMachine { get; private set; }
         public GlobalInterruptProcessor InterruptProcessor { get; private set; }
         public PlayerRuntimeData RuntimeData { get; private set; }
         public InputData InputData { get; private set; }
-        private CharacterStatusDriver _characterStatusDriver;
 
         // 核心管线
         public InputPipeline InputPipeline { get; private set; }
@@ -56,6 +59,7 @@ namespace BBBNexus
         public FacialController _facialController { get; private set; }
         public IKController _ikController { get; private set; }
         public PlayerInventoryController InventoryController { get; private set; }
+        public ActionController ActionController { get; private set; }
 
         // 驱动器与外观层系统
         public AnimancerComponent Animancer { get; private set; }
@@ -63,6 +67,7 @@ namespace BBBNexus
         public MotionDriver MotionDriver { get; private set; }
         public EquipmentDriver EquipmentDriver { get; private set; }
         public AnimationFacadeBase AnimFacade { get; private set; }
+        public AudioDriver AudioDriver { get; private set; }
 
         // 状态注册表
         public PlayerStateRegistry StateRegistry { get; private set; }
@@ -131,8 +136,10 @@ namespace BBBNexus
             InterruptProcessor = new GlobalInterruptProcessor(this);
             MotionDriver = new MotionDriver(this);
             EquipmentDriver = new EquipmentDriver(this);
-            _characterStatusDriver = new CharacterStatusDriver(RuntimeData, Config);
             LodArbiter = new LODArbiter(this);
+
+            // 音频驱动器：如果没配 AudioSource 或模块，则 driver 仍可存在但会静默忽略播放请求。
+            AudioDriver = new AudioDriver(transform, SfxSource, Config != null ? Config.Audio : null);
 
             // 2.5 实例化仲裁管线
             ArbiterPipeline = new ArbiterPipeline(this);
@@ -147,6 +154,7 @@ namespace BBBNexus
             UpperBodyCtrl = new UpperBodyController(this);
             _facialController = new FacialController(this);
             _ikController = new IKController(this);
+            ActionController = new ActionController(this);
 
             // 5. 装载状态字典 分配独立内存实例
             StateRegistry = new PlayerStateRegistry();
@@ -222,8 +230,6 @@ namespace BBBNexus
 
             InventoryController.Update();
 
-            _characterStatusDriver.Update();
-
             MainProcessorPipeline.UpdateParameterProcessors();
 
             StateMachine.CurrentState.LogicUpdate();
@@ -231,6 +237,7 @@ namespace BBBNexus
             UpperBodyCtrl.Update();
 
             _facialController.Update();
+            ActionController?.Update();
 
             if (statedebug && StateMachine.CurrentState != null && _lastState != null)
             {

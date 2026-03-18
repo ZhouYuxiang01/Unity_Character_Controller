@@ -3,7 +3,7 @@ namespace BBBNexus
     // 瞄准与开火意图处理器 
     public class AimIntentProcessor
     {
-        private PlayerRuntimeData _data;
+        private readonly PlayerRuntimeData _data;
         private bool _isAimHeld;
         private bool _wasAimHeld;
 

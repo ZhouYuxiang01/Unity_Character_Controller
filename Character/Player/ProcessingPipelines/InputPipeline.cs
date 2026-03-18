@@ -133,7 +133,7 @@ namespace BBBNexus
             currentFrame.Processed.Number4Held = _rawData.Number4Held;
             currentFrame.Processed.Number5Held = _rawData.Number5Held;
 
-            currentFrame.Processed.WaveHeld = _rawData.WaveHeld;
+            currentFrame.Processed.ActionHeld = _rawData.ActionHeld;
 
             //  动作缓存池调度
             // 核心机制：一旦硬件触发 JustPressed 给对应的Timer充能 随后随时间衰减。
@@ -166,7 +166,7 @@ namespace BBBNexus
             currentFrame.Processed.Number4BufferTimer = UpdateBuffer(lastProc.Number4BufferTimer, _rawData.Number4JustPressed);
             currentFrame.Processed.Number5BufferTimer = UpdateBuffer(lastProc.Number5BufferTimer, _rawData.Number5JustPressed);
 
-            currentFrame.Processed.WaveBufferTimer = UpdateBuffer(lastProc.WaveBufferTimer, _rawData.WaveJustPressed);
+            currentFrame.Processed.ActionBufferTimer = UpdateBuffer(lastProc.ActionBufferTimer, _rawData.ActionJustPressed);
 
             // 将局部计算完毕的纯净数据 一次性写回堆内存 供全局读取
             _inputData.currentFrameData = currentFrame;
@@ -193,7 +193,11 @@ namespace BBBNexus
         public void ConsumeNumber4Pressed() { var f = _inputData.currentFrameData; f.Processed.Number4BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeNumber5Pressed() { var f = _inputData.currentFrameData; f.Processed.Number5BufferTimer = 0f; _inputData.currentFrameData = f; }
 
-        public void ConsumeWavePressed() { var f = _inputData.currentFrameData; f.Processed.WaveBufferTimer = 0f; _inputData.currentFrameData = f; }
+        public void ConsumeActionPressed() { var f = _inputData.currentFrameData; f.Processed.ActionBufferTimer = 0f; _inputData.currentFrameData = f; }
+
+        // legacy alias (if any code still calls old name, keep a thin forwarder)
+        public void ConsumeWavePressed() => ConsumeActionPressed();
+
         public void ConsumeLeftMousePressed() { var f = _inputData.currentFrameData; f.Processed.LeftMouseBufferTimer = 0f; _inputData.currentFrameData = f; }
     }
 }

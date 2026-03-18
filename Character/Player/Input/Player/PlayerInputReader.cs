@@ -22,7 +22,7 @@ namespace BBBNexus
         public InputActionReference aimAction;
         public InputActionReference dodgeAction;
         public InputActionReference rollAction;
-        public InputActionReference waveAction;
+        public InputActionReference actionAction; // Renamed to action internally
         public InputActionReference LeftMouseAction; // 左鼠标已合并 fireAction
         public InputActionReference number1Action;
         public InputActionReference number2Action;
@@ -66,7 +66,7 @@ namespace BBBNexus
             rawData.Number3Held = number3Action != null && number3Action.action.IsPressed();
             rawData.Number4Held = number4Action != null && number4Action.action.IsPressed();
             rawData.Number5Held = number5Action != null && number5Action.action.IsPressed();
-            rawData.WaveHeld = waveAction != null && waveAction.action.IsPressed();
+            rawData.ActionHeld = actionAction != null && actionAction.action.IsPressed(); // Renamed to ActionHeld
             // FireHeld 已合并到 LeftMouseHeld，所以只赋值 LeftMouseHeld
             rawData.LeftMouseHeld = LeftMouseAction != null && LeftMouseAction.action.IsPressed();
 
@@ -87,14 +87,14 @@ namespace BBBNexus
             rawData.Number3JustPressed = number3Action != null && number3Action.action.WasPressedThisFrame();
             rawData.Number4JustPressed = number4Action != null && number4Action.action.WasPressedThisFrame();
             rawData.Number5JustPressed = number5Action != null && number5Action.action.WasPressedThisFrame();
-            rawData.WaveJustPressed = waveAction != null && waveAction.action.WasPressedThisFrame();
+            rawData.ActionJustPressed = actionAction != null && actionAction.action.WasPressedThisFrame(); // Renamed to ActionJustPressed
         }
 
         private void ToggleActions(bool enable)
         {
             InputActionReference[] all = {
                 moveAction, lookAction, jumpAction, sprintAction, walkAction,
-                aimAction, dodgeAction, rollAction, waveAction, LeftMouseAction,
+                aimAction, dodgeAction, rollAction, actionAction, LeftMouseAction,
                 number1Action, number2Action, number3Action, number4Action, number5Action,
                 expression1Action, expression2Action, expression3Action, expression4Action
             };

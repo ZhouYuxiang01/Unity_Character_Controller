@@ -4,7 +4,7 @@ namespace BBBNexus
 {
     // 翻越系统配置模块 它负责管理越过障碍物的所有参数 包括检测 动画 IK等 
     // 翻越是复杂的多层协调动作 改这里的参数时要同时改对应的动画数据 不然会断手断脚 
-    [CreateAssetMenu(fileName = "VaultingModule", menuName = "BBBNexus/Player/Modules/Vaulting Module")]
+    [CreateAssetMenu(fileName = "VaultingSO", menuName = "BBBNexus/Player/Modules/VaultingSO")]
     public class VaultingSO : ScriptableObject
     {
         [Header("翻越检测 (Vault Detection) - 如何识别可翻越的障碍物")]

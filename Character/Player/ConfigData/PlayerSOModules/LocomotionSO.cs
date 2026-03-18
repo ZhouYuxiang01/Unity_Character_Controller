@@ -5,8 +5,8 @@ namespace BBBNexus
 {
     // 动画集合配置模块 它存储所有移动状态的动画与过渡参数 
     // 这里的所有动画都是静态资源 不会在运行时修改 直接从磁盘序列化加载 
-    [CreateAssetMenu(fileName = "LocomotionAnimSet", menuName = "BBBNexus/Player/Modules/Locomotion AnimSet")]
-    public class LocomotionAnimSetSO : ScriptableObject
+    [CreateAssetMenu(fileName = "LocomotionSO", menuName = "BBBNexus/Player/Modules/LocomotionSO")]
+    public class LocomotionSO : ScriptableObject
     {
         #region FadeTimeSettings 淡入参数 - 控制动画切换的流畅度
 

@@ -1,20 +1,65 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Animancer;
 
 namespace BBBNexus
 {
-    // 表现层的核心 负责转接动画意图 
+    // animancer动画转接器 
     [RequireComponent(typeof(AnimancerComponent))]
     public class AnimancerFacade : AnimationFacadeBase
     {
-        // 插件核心组件引用 它是实际干活的底层驱动 
         private AnimancerComponent _animancer;
 
         // 多层回调字典 这是为了解决多层级动作串线
         // 每个动画层都有自己的独立回调槽位 互不干扰 
         // 别随便改这里的逻辑 不然换弹动作可能会卡在最后一帧 
-        private Dictionary<int, System.Action> _layerOnEndActions = new Dictionary<int, System.Action>();
+        private Dictionary<int, Action> _layerOnEndActions = new Dictionary<int, Action>();
+
+        // 回调包装类的对象池 避免闭包GC
+        private Stack<CallbackWrapper> _wrapperPool = new Stack<CallbackWrapper>();
+
+        /// <summary>
+        /// 专供 Override/代理模式的逻辑回调通道
+        /// 注意：它不对应真实 AnimancerLayer 只是把回调绑定到 layer0 当前 state 上
+        /// </summary>
+        private CallbackWrapper _overrideCallbackWrapper;
+
+        private class CallbackWrapper
+        {
+            public AnimancerState State;
+            public int LayerIndex;
+            public Action OnEndAction;
+            public AnimancerFacade Facade;
+            
+            // 将实例方法缓存为委托，彻底消灭 new Action() 的隐藏GC
+            public readonly Action DelegateInstance;
+
+            public CallbackWrapper()
+            {
+                DelegateInstance = Execute;
+            }
+
+            private void Execute()
+            {
+                if (State != null)
+                {
+                    try { State.Events(Facade).OnEnd = null; State.Events(Facade).Clear(); } catch { }
+                }
+
+                Facade._layerOnEndActions.Remove(LayerIndex);
+                try { OnEndAction?.Invoke(); } catch { }
+                
+                // 执行完毕后，清空引用防止内存泄漏，并把自己压回池中复用
+                State = null;
+                OnEndAction = null;
+                Facade._wrapperPool.Push(this);
+            }
+        }
+        //注：我们的回调注册(老版本) 实际上是声明了一个委托然后写入字典 
+        //问题是 这个委托是使用了函数的内部值的 所以 为了避免让内部值脱离这个函数的生命周期
+        //c#会偷偷打包出一个闭包 分配在堆内存上 会产生GC压力 如果只有一个角色 其实问题不大
+        //(我有洁癖 遂构造了一个简单的委托对象池)
 
         private bool _fullBodyRootMotionEnabled;
 
@@ -101,7 +146,7 @@ namespace BBBNexus
         }
 
         // 注册状态机跳转的结束指令 
-        public override void SetOnEndCallback(System.Action onEndAction, int layerIndex = 0)
+        public override void SetOnEndCallback(Action onEndAction, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
 
@@ -112,22 +157,65 @@ namespace BBBNexus
                 return;
             }
 
-            // 包装一层保护逻辑 确保回调跑完就自动爆炸
-            // 绝对不能让过期的回调留在下一帧 否则逻辑会彻底乱套 
-            System.Action wrapper = null;
-            wrapper = () =>
+            // 从对象池获取一个包装器，避免创建新的闭包对象
+            CallbackWrapper wrapper = _wrapperPool.Count > 0 ? _wrapperPool.Pop() : new CallbackWrapper();
+            wrapper.State = state;
+            wrapper.LayerIndex = layerIndex;
+            wrapper.OnEndAction = onEndAction;
+            wrapper.Facade = this;
+
+            _layerOnEndActions[layerIndex] = wrapper.DelegateInstance;
+            if (state != null) state.Events(this).OnEnd = wrapper.DelegateInstance;
+        }
+
+        public override void SetOverrideOnEndCallback(Action onEndAction)
+        {
+            // -1 通道绑定到 layer0 当前 state。
+            var state = GetLayerOrFallback(0).CurrentState;
+
+            if (onEndAction == null)
             {
-                if (state != null)
+                ClearOverrideOnEndCallback();
+                return;
+            }
+
+            // 先清掉旧的绑定（仅影响 override 通道自身）。
+            ClearOverrideOnEndCallback();
+
+            CallbackWrapper wrapper = _wrapperPool.Count > 0 ? _wrapperPool.Pop() : new CallbackWrapper();
+            wrapper.State = state;
+            wrapper.LayerIndex = -1;
+            wrapper.OnEndAction = onEndAction;
+            wrapper.Facade = this;
+
+            _overrideCallbackWrapper = wrapper;
+
+            if (state != null)
+            {
+                state.Events(this).OnEnd = wrapper.DelegateInstance;
+            }
+        }
+
+        public override void ClearOverrideOnEndCallback()
+        {
+            if (_overrideCallbackWrapper == null) return;
+
+            var state = _overrideCallbackWrapper.State;
+            if (state != null)
+            {
+                try
                 {
-                    try { state.Events(this).OnEnd = null; state.Events(this).Clear(); } catch { }
+                    state.Events(this).OnEnd = null;
+                    state.Events(this).Clear();
                 }
+                catch { }
+            }
 
-                _layerOnEndActions.Remove(layerIndex);
-                try { onEndAction.Invoke(); } catch { }
-            };
-
-            _layerOnEndActions[layerIndex] = wrapper;
-            if (state != null) state.Events(this).OnEnd = wrapper;
+            // 手动回收到池（不走 Execute，因为 Execute 会尝试操作 _layerOnEndActions[-1]）
+            _overrideCallbackWrapper.State = null;
+            _overrideCallbackWrapper.OnEndAction = null;
+            _wrapperPool.Push(_overrideCallbackWrapper);
+            _overrideCallbackWrapper = null;
         }
 
         // 动态调权重 实现上半身动作和面部表情叠加
@@ -147,7 +235,7 @@ namespace BBBNexus
             if (layer != null) layer.Mask = mask;
         }
 
-        // 强行清理指定层的事件流 这是一个极其重要的防御手段 
+        // 强行清理指定层的事件流 
         public override void ClearOnEndCallback(int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
@@ -160,7 +248,7 @@ namespace BBBNexus
         }
 
         // 在指定时间点插入逻辑反馈 
-        public override void AddCallback(float normalizedTime, System.Action callback, int layerIndex = 0)
+        public override void AddCallback(float normalizedTime, Action callback, int layerIndex = 0)
         {
             var state = GetLayerOrFallback(layerIndex).CurrentState;
             if (state == null || callback == null) return;
@@ -207,6 +295,7 @@ namespace BBBNexus
             _fullBodyRootMotionEnabled = true;
             _animancer.Animator.applyRootMotion = true;
 
+            // 全身动作切换时 清理 layer0 的通用回调槽 
             ClearOnEndCallback(0);
 
             SetLayerWeight(1, 0f, fadeDuration);

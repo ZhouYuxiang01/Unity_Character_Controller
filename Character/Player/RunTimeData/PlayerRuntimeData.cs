@@ -31,6 +31,9 @@ namespace BBBNexus
             public bool BlockInventory;
             public bool IsDead;
 
+            // 预留：Action 系统仲裁标记（未来可用于禁用/排队某些动作意图）
+            public bool BlockAction;
+
             public void Clear()
             {
                 BlockInput = false;
@@ -39,6 +42,7 @@ namespace BBBNexus
                 BlockIK = false;
                 BlockInventory = false;
                 IsDead = false;
+                BlockAction = false;
             }
         }
 
@@ -245,6 +249,10 @@ namespace BBBNexus
         [Tooltip("表情4")]
         public bool WantsExpression4;
 
+        [Header("动作意图")]
+        [Tooltip("本帧是否想执行 Action（原 wave 意图改名）。")]
+        public bool WantsToAction;
+
         #endregion
 
         #region 变形与翻越（根运动与翻越数据）
@@ -360,7 +368,9 @@ namespace BBBNexus
             WantsToRoll = false;
             WantsLowVault = false;
             WantsHighVault = false;
-            WantsToFire = false; 
+            WantsToFire = false;
+            WantsToAction = false;
+
             WantsExpression1 = false;
             WantsExpression2 = false;
             WantsExpression3 = false;

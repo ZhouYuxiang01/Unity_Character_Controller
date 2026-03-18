@@ -3,7 +3,7 @@ using UnityEngine;
 namespace BBBNexus
 {
     /// <summary>
-    /// LOD 性能仲裁器 (直属 Core 层)
+    /// LOD 性能仲裁器 
     /// 以低开销在主线程进行降频裁决 仲裁角色当前的表现层级 并下发给底层 Animator
     /// </summary>
     public class LODArbiter

@@ -21,23 +21,17 @@ namespace BBBNexus
             _inputPipeline = player.InputPipeline;
 
             _layer = player.Animancer.Layers[2];
-
-            if (_config != null && _config.Core != null)
-                _layer.Mask = _config.Core.FacialMask;
-
+            _layer.Mask = _config.Core.FacialMask;
             _layer.Weight = 1f;
 
-            if (_config != null && _config.Emj != null && _config.Emj.BaseExpression != null && _config.Emj.BaseExpression.Clip != null)
-                _currentBaseExpression = _config.Emj.BaseExpression;
-            else if (_config != null && _config.Core != null)
-                _currentBaseExpression = _config.Core.BlinkAnim;
+            if (_config.Emj != null) _currentBaseExpression = _config.Emj.BaseExpression;
 
             PlayBaseExpression();
         }
 
         public void Update()
         {
-            if (_data == null || _config == null || _config.Emj == null) return;
+            if (_config.Emj == null) return;
 
             if (_data.Arbitration.BlockFacial)
             {

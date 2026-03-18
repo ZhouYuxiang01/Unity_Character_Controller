@@ -204,7 +204,7 @@ namespace BBBNexus
         // 启动新攻击或接上一个连击 
         private void StartOrChainAttack()
         {
-            Debug.Log("qqqq");
+            //Debug.Log("qqqq");
             // 验证必要的对象 
             if (_config == null || _player == null)
                 return;
@@ -234,10 +234,10 @@ namespace BBBNexus
                 AudioSource.PlayClipAtPoint(_config.SwingSound, transform.position);
 
             // 绑定动画结束回调
-            // 注意：这里仅用于监听OverrideState播放完毕后的状态转移
-            // 实际的动画播放由OverrideState负责 不在这里播放
+            // 注意：攻击动画由 OverrideState 在 layer0 播放。
+            // 这里监听“代理模式动作结束”必须走 -1 回调通道，禁止占用 layer0 的共享槽位。
             if (_player.AnimFacade != null)
-                _player.AnimFacade.SetOnEndCallback(_onAttackAnimEndCached, 0);
+                _player.AnimFacade.SetOverrideOnEndCallback(_onAttackAnimEndCached);
 
             // 发送接管请求 直接使用SwordSO中配置的ActionRequest
             // 关键修复：需要立刻刷新仲裁，否则本帧可能不会进入 OverrideState，表现为“没有播放攻击动画”
@@ -274,9 +274,9 @@ namespace BBBNexus
             // 递增令牌 使所有旧回调失效 
             _attackToken++;
 
-            // 清空所有回调 
+            // 清理 -1 回调通道即可，避免误伤 layer0（OverrideState 或其他系统）。
             if (_player.AnimFacade != null)
-                _player.AnimFacade.ClearOnEndCallback(0);
+                _player.AnimFacade.ClearOverrideOnEndCallback();
 
             // 如果正在攻击则转入待机 
             if (_phase == SwordPhase.Attacking)

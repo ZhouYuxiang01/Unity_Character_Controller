@@ -15,14 +15,23 @@ namespace BBBNexus
         public override void Enter()
         {
             _applied = false;
+
+            // 代理模式期间：拒绝物品栏切换（由 InventoryController 直接拒绝）。
+            data.Arbitration.BlockInventory = true;
+
             Apply();
         }
 
         public override void Exit()
         {
-            AnimFacade.ClearOnEndCallback(0);
+            // 清理 Override 专用回调通道，不影响其它系统绑定在 layer0 的回调。
+            AnimFacade.ClearOverrideOnEndCallback();
+
+            // 仍然清理全身动作相关表现。
             AnimFacade.StopFullBodyAction();
+
             data.Override.Clear();
+            data.Arbitration.BlockInventory = false;
         }
 
         protected override bool CheckInterrupts() => false;
@@ -49,17 +58,16 @@ namespace BBBNexus
             var req = data.Override.Request;
 
             AnimFacade.PlayFullBodyAction(req.Clip, req.FadeDuration);
-            AnimFacade.SetOnEndCallback(OnClipEnd, 0);
+
+            // 关键：全身Override的结束回调注册到 -1 通道，避免与物品/其他系统抢占 layer0 的 OnEnd 槽位。
+            AnimFacade.SetOverrideOnEndCallback(OnClipEnd);
         }
 
         private void OnClipEnd()
         {
-            AnimFacade.ClearOnEndCallback(0);
+            AnimFacade.ClearOverrideOnEndCallback();
 
             if (!data.Override.IsActive) return;
-
-            if (data.Override.Request.ExitMode == OverrideExitMode.Keep)
-                return;
 
             if (data.Override.ReturnState != null)
             {

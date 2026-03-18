@@ -5,8 +5,8 @@ namespace BBBNexus
 {
     // 瞄准系统配置模块 它独立管理瞄准状态下的所有参数 包括灵敏度 移动速度 混合树等 
     // 瞄准时会从常规移动状态切到瞄准移动状态 所有参数都独立设置 
-    [CreateAssetMenu(fileName = "AimingModule", menuName = "BBBNexus/Player/Modules/Aiming Module")]
-    public class AimingModuleSO : ScriptableObject
+    [CreateAssetMenu(fileName = "AimingSO", menuName = "BBBNexus/Player/Modules/AimingSO")]
+    public class AimingSO : ScriptableObject
     {
         [Header("瞄准灵敏度 (Aiming Sensitivity) - 瞄准模式下的视角反应")]
         

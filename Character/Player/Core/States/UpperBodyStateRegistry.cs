@@ -24,7 +24,6 @@ namespace BBBNexus
             {
                 var stateTypeEnum = brain.UpperBodyStates[i];
 
-                // 【核心重构】：仅保留三个极简状态的映射
                 UpperBodyBaseState newState = stateTypeEnum switch
                 {
                     UpperBodyStateType.EmptyHands => new UpperBodyEmptyState(player),

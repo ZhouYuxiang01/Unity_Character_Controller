@@ -30,7 +30,7 @@ namespace BBBNexus
         public bool Number4Held;
         public bool Number5Held;
 
-        public bool WaveHeld;
+        public bool ActionHeld;
         public bool LeftMouseHeld;
 
         // --- 硬件边沿触发 (瞬间事实) ---
@@ -50,7 +50,7 @@ namespace BBBNexus
         public bool Number4JustPressed;
         public bool Number5JustPressed;
 
-        public bool WaveJustPressed;
+        public bool ActionJustPressed;
         public bool LeftMouseJustPressed;
     }
 
@@ -83,7 +83,7 @@ namespace BBBNexus
         public bool Number4Held;
         public bool Number5Held;
 
-        public bool WaveHeld;
+        public bool ActionHeld;
         public bool LeftMouseHeld;
 
         // --- 核心魔法：缓存计时器 (Input Buffers) ---
@@ -103,7 +103,7 @@ namespace BBBNexus
         public float Number4BufferTimer;
         public float Number5BufferTimer;
 
-        public float WaveBufferTimer;
+        public float ActionBufferTimer;
         public float LeftMouseBufferTimer;
 
         // --- 向外暴露的单帧意愿字段（由 InputPipeline 根据 BufferTimer 写入） ---
@@ -125,7 +125,7 @@ namespace BBBNexus
         public bool Number4Pressed => Number4BufferTimer > 0f;
         public bool Number5Pressed => Number5BufferTimer > 0f;
 
-        public bool WavePressed => WaveBufferTimer > 0f;
+        public bool ActionPressed => ActionBufferTimer > 0f;
         public bool LeftMousePressed => LeftMouseBufferTimer > 0f;
     }
 
