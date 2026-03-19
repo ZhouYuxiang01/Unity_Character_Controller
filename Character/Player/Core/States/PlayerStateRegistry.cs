@@ -8,7 +8,7 @@ namespace BBBNexus
     {
         private readonly Dictionary<Type, PlayerBaseState> _states = new Dictionary<Type, PlayerBaseState>();
 
-        // 记录启动状态（大脑名单里的第一个）
+        // 记录启动状态（brain名单里的第一个）
         public PlayerBaseState InitialState { get; private set; }
 
         /// <summary>
@@ -18,7 +18,7 @@ namespace BBBNexus
         {
             if (brain == null || brain.AvailableStates == null || brain.AvailableStates.Count == 0)
             {
-                Debug.LogError("[StateRegistry] PlayerBrainSO 未配置或没有添加任何状态！");
+                Debug.LogError("[BBBNexus] 存在PlayerBrainSO 未配置或没有添加任何状态！");
                 return;
             }
 
@@ -56,14 +56,14 @@ namespace BBBNexus
                     }
 
                     // 凭什么启动状态必须是 Idle？如果我做个一出场就在天上掉落的角色呢？
-                    // 默认列表里的第一个状态作为启动状态
+                    // 默认列表里的第一个状态作为启动状态 (如果不这么做 就要硬编码一个状态 我有洁癖哈哈)
                     if (InitialState == null)
                     {
                         InitialState = newState;
                     }
                 }
             }
-            //Debug.Log($"[StateRegistry] 成功装载了 {_states.Count} 个状态！");
+            //Debug.Log($"[BBBNexus] 成功装载了 {_states.Count} 个状态！");
         }
 
         /// <summary>

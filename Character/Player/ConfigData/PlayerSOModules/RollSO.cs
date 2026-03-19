@@ -2,8 +2,7 @@ using UnityEngine;
 
 namespace BBBNexus
 {
-    // 翻滚系统配置模块 与闪避系统类似 但翻滚通常是更长的动画 需要更多时间恢复 
-    // 翻滚可以用来躲避大范围伤害 也可以加速移动 取决于游戏设计 
+    // 翻滚系统配置模块 与闪避系统类似 
     [CreateAssetMenu(fileName = "RollSO", menuName = "BBBNexus/Player/Modules/RollSO")]
     public class RollSO : ScriptableObject
     {

@@ -4,7 +4,6 @@ namespace BBBNexus
 {
     /// <summary>
     /// 音频驱动器：运行时根据编号播放音效。
-    /// 设计目标：调用方只关心“编号”，不关心 AudioClip 引用来源。
     /// </summary>
     public sealed class AudioDriver
     {

@@ -14,7 +14,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 1
   m_IsActive: 1
 --- !u!4 &3032101591790243176
 Transform:
@@ -24,13 +24,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1194893669978887261}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.41619816, y: -0.1922956, z: 0.8818895, w: 0.109874405}
-  m_LocalPosition: {x: -0.0339, y: 0.0507, z: -0.0135}
+  m_LocalRotation: {x: -0.38735726, y: -0.19348238, z: 0.8933012, w: 0.12054868}
+  m_LocalPosition: {x: -0.063, y: 0.038, z: -0.046}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 198616326418531489}
-  m_LocalEulerAnglesHint: {x: 14.342, y: -53.256, z: 158.577}
+  m_LocalEulerAnglesHint: {x: 14.613, y: -49.764, z: 157.823}
 --- !u!1 &2885338471654634729
 GameObject:
   m_ObjectHideFlags: 0
@@ -45,7 +45,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 1
   m_IsActive: 1
 --- !u!4 &6411843106247134292
 Transform:
@@ -73,17 +73,17 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: ccc85735bfd33944ba86183bf96b68e5,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.89
+      value: 367.44147
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ccc85735bfd33944ba86183bf96b68e5,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.988
+      value: 0.83
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ccc85735bfd33944ba86183bf96b68e5,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.265
+      value: 206.65376
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ccc85735bfd33944ba86183bf96b68e5,
         type: 3}
@@ -125,10 +125,20 @@ PrefabInstance:
       propertyPath: m_Name
       value: AK
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ccc85735bfd33944ba86183bf96b68e5,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7026343843153984662, guid: ccc85735bfd33944ba86183bf96b68e5,
         type: 3}
       propertyPath: m_Name
       value: Clip
+      objectReference: {fileID: 0}
+    - target: {fileID: 7026343843153984662, guid: ccc85735bfd33944ba86183bf96b68e5,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -13,8 +13,8 @@ namespace BBBNexus
         {
             _data = data;
         }
-
-        public void Update(in BBBNexus.ProcessedInputData input)
+        
+        public void Update(in ProcessedInputData input)
         {
             if (input.ActionPressed)
             {

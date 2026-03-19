@@ -22,7 +22,7 @@ namespace BBBNexus
                         // 绑定左手效应器 注入物理挂点并同步权重
                         _fbbik.solver.leftHandEffector.target = targetTransform;
                         _fbbik.solver.leftHandEffector.positionWeight = weight;
-                        _fbbik.solver.leftHandEffector.rotationWeight = weight;
+                        //_fbbik.solver.leftHandEffector.rotationWeight = weight;
                         // 注意 权重过高可能导致动作僵硬 需要由意图管线平滑处理
                     }
                     break;
@@ -33,7 +33,7 @@ namespace BBBNexus
                         // 绑定右手效应器 逻辑与左手保持一致
                         _fbbik.solver.rightHandEffector.target = targetTransform;
                         _fbbik.solver.rightHandEffector.positionWeight = weight;
-                        _fbbik.solver.rightHandEffector.rotationWeight = weight;
+                        //_fbbik.solver.rightHandEffector.rotationWeight = weight;
                     }
                     break;
 

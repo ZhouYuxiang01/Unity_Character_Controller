@@ -42,7 +42,7 @@ MonoBehaviour:
     WarpPoints:
     - PointName: End
       NormalizedTime: 1
-      TargetPositionOffset: {x: 0, y: 0, z: 6}
+      TargetPositionOffset: {x: 0, y: 0, z: 0}
       BakedLocalOffset: {x: 0.00000012462064, y: 1.7180628e-31, z: 2.7877178}
       BakedLocalRotation: {x: 0, y: 0, z: 0, w: 1}
     HandIKWeightCurve:

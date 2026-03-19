@@ -7,12 +7,12 @@ namespace BBBNexus
     #region Enums (枚举定义)
 
     /// <summary>
-    /// Foot phase (left or right foot down) - 脚相位（左脚或右脚着地）
+    /// 脚相位（左脚或右脚着地）
     /// </summary>
     public enum FootPhase { LeftFootDown, RightFootDown }
 
     /// <summary>
-    /// Motion type for animation driving - 动画驱动类型
+    /// 动画驱动类型
     /// </summary>
     [System.Serializable]
     public enum MotionType
@@ -23,15 +23,15 @@ namespace BBBNexus
     }
 
     /// <summary>
-    /// Warped Motion Type for auto-baking feature points - 扭曲动作类型，用于自动烘焙特征点
+    /// 扭曲动作类型，用于自动烘焙特征点
     /// </summary>
     public enum WarpedType
     {
-        None,           // 手动模式，使用用户配置的点
+        None,           // 手动模式 使用用户配置的点
         Vault,          // 自动探测Y轴极大值（顶点）
         Dodge,          // 自动探测XZ平面最大位移点
         Simple,         // 仅生成1.0的终点
-        Custom          // 保留用户定义的特征点，仅烘焙曲线数据
+        Custom          // 保留用户定义的特征点 仅烘焙曲线数据
     }
 
     #endregion
@@ -39,8 +39,7 @@ namespace BBBNexus
     #region Serializable Data Wrappers (可序列化数据容器)
 
     /// <summary>
-    /// Animation clip data for standard, curve-driven motion (e.g., Starts, Stops).
-    /// 适用于标准、曲线驱动的运动动画片段数据（如起步、停止）。
+    /// 适用于标准、曲线驱动的运动动画片段数据（如起步、停止）
     /// </summary>
     [System.Serializable]
     public class MotionClipData
@@ -72,8 +71,7 @@ namespace BBBNexus
     }
 
     /// <summary>
-    /// Defines a special moment (warp point) in an animation for spatial alignment.
-    /// 定义动画中用于空间对齐的特征时刻（Warp点）。
+    /// 定义动画中用于空间对齐的特征时刻
     /// </summary>
     [System.Serializable]
     public class WarpPointDef
@@ -97,8 +95,7 @@ namespace BBBNexus
     }
 
     /// <summary>
-    /// Animation data for advanced motion warping (e.g., Vault, Dodge).
-    /// 用于高级空间扭曲（如翻越、闪避）的动画数据。
+    /// 用于高级空间扭曲（如翻越、闪避）的动画数据
     /// </summary>
     [System.Serializable]
     public class WarpedMotionData

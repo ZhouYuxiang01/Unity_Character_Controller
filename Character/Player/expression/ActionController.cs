@@ -5,8 +5,8 @@ using UnityEngine;
 namespace BBBNexus
 {
     /// <summary>
-    /// Action 控制器：响应黑板 WantsToAction 意图，循环提交“接管动作请求”。
-    /// 设计：每次触发都会把索引推进 0..7 并提交一个 ActionRequest，允许互相打断。
+    /// Action 控制器：响应黑板 WantsToAction 意图，循环提交“接管动作请求”
+    /// 目前仅实现了基础功能：每次触发都会把索引推进 0....7 并提交一个 ActionRequest 允许互相打断
     /// </summary>
     public sealed class ActionController
     {
@@ -17,7 +17,7 @@ namespace BBBNexus
 
         private int _index;
 
-        // 默认优先级：保证能打断普通移动，但低于翻滚/闪避等。
+        // 默认优先级：保证能打断普通移动 但低于翻滚/闪避等
         private const int DefaultPriority = 25;
 
         public ActionController(PlayerController player)
@@ -34,12 +34,12 @@ namespace BBBNexus
             if (_data == null || _config == null || _input == null) return;
             if (_config.Action == null) return;
 
-            // 预留仲裁位：未来可统一禁止/排队 Action。
+            // 预留的仲裁位：未来可统一禁止/排队 Action
             if (_data.Arbitration.BlockAction) return;
 
             if (!_data.WantsToAction) return;
 
-            // 消费输入缓存，避免同一帧重复触发。
+            // 消费输入缓存 避免同一帧重复触发
             _input.ConsumeActionPressed();
 
             var clip = _config.Action.GetClip(_index);
@@ -47,8 +47,8 @@ namespace BBBNexus
 
             if (clip == null) return;
 
-            // 发送接管请求：flushImmediately = true，确保本帧进入 OverrideState。
-            var req = new ActionRequest(clip, priority: DefaultPriority, fadeDuration: 0.15f, applyGravity: true);
+            // 发送接管请求：flushImmediately = true 确保本帧进入 OverrideState。
+            var req = new ActionRequest(clip, DefaultPriority, 0.15f, true);
             _player.RequestOverride(in req, flushImmediately: true);
         }
     }

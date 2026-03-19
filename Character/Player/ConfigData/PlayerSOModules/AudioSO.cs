@@ -4,9 +4,7 @@ using UnityEngine;
 
 namespace BBBNexus
 {
-    /// <summary>
-    /// 音频模块配置：提供“编号 -> AudioClip”的静态映射。
-    /// </summary>
+    // 音频模块配置：提供“编号 -> AudioClip”的静态映射
     [CreateAssetMenu(fileName = "AudioSO", menuName = "BBBNexus/Player/Modules/AudioSO")]
     public sealed class AudioSO : ScriptableObject
     {
@@ -37,7 +35,7 @@ namespace BBBNexus
                 var e = _entries[i];
                 if (e.Clip == null) continue;
 
-                // 后写覆盖前写：方便在 Inspector 里快速覆盖。
+                // 后写覆盖前写：方便在 Inspector 里快速覆盖
                 _cache[e.Id] = e.Clip;
             }
         }

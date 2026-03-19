@@ -3,8 +3,7 @@ using UnityEngine;
 namespace BBBNexus
 {
     /// <summary>
-    /// 体力仲裁器：被动读取黑板中的运动状态，并更新体力消耗/恢复。
-    /// 注意：它不是 Driver，不直接依赖 StateMachine，仅由 ArbiterPipeline 在 Update 阶段驱动。
+    /// 体力仲裁器：被动读取黑板中的运动状态 并更新体力消耗/恢复
     /// </summary>
     public sealed class StaminaArbiter
     {

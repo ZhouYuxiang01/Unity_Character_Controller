@@ -170,7 +170,7 @@ namespace BBBNexus
 
         public override void SetOverrideOnEndCallback(Action onEndAction)
         {
-            // -1 通道绑定到 layer0 当前 state。
+            // 接管模式的回调通道绑定到 layer0 当前 state。
             var state = GetLayerOrFallback(0).CurrentState;
 
             if (onEndAction == null)
@@ -311,7 +311,7 @@ namespace BBBNexus
             _fullBodyRootMotionEnabled = false;
         }
 
-        // 基础层当前的播放进度 它是意图管线判断动作是否播完的重要依据 
+        // 基础层当前的播放进度
         public override float CurrentTime => GetLayerTime(0);
         public override float CurrentNormalizedTime => GetLayerNormalizedTime(0);
 

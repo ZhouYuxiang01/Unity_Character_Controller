@@ -45,8 +45,6 @@ namespace BBBNexus
             {
                 ref var req = ref _damageQueue[_head];
 
-                // 未来可以在这里插入护盾拦截、无敌帧检测等 Modifier
-
                 float before = _data.CurrentHealth;
                 // 结算伤害
                 _data.CurrentHealth -= req.Amount;

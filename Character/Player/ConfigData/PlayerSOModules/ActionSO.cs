@@ -2,9 +2,7 @@ using UnityEngine;
 
 namespace BBBNexus
 {
-    /// <summary>
-    /// Action 模块：提供 8 个全身动作动画（用于 Override 接管模式）。
-    /// </summary>
+    // Action 模块：提供 8 个全身动作动画
     [CreateAssetMenu(fileName = "ActionSO", menuName = "BBBNexus/Player/Modules/ActionSO")]
     public sealed class ActionSO : ScriptableObject
     {

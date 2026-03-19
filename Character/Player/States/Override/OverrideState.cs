@@ -49,6 +49,13 @@ namespace BBBNexus
                 player.MotionDriver.UpdateGravityOnly();
         }
 
+        // 允许外部在不切换状态的情况下强制重播新请求
+        public void ForceReapply()
+        {
+            _applied = false;
+            Apply();
+        }
+
         private void Apply()
         {
             if (!data.Override.IsActive) return;

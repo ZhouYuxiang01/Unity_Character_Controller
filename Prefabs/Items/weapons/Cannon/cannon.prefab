@@ -14,7 +14,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 1
   m_IsActive: 1
 --- !u!4 &46628406749596872
 Transform:
@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 1087866759201682093}
   serializedVersion: 2
   m_LocalRotation: {x: -0.046140954, y: -0.022751864, z: -0.8393194, w: 0.541199}
-  m_LocalPosition: {x: -0.079, y: -0.03, z: -0.006}
+  m_LocalPosition: {x: 0.011, y: -0.095, z: -0.162}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -45,7 +45,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 1
   m_IsActive: 1
 --- !u!4 &1113017543265898596
 Transform:
@@ -124,6 +124,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: cannon
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: a9b68cb62f8b2b44d9e8728663182ac0,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

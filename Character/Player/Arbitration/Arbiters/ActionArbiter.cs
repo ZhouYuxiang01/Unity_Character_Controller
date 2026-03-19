@@ -27,16 +27,34 @@ namespace BBBNexus
             var request = _data.ActionArbitration.HighestPriorityRequest;
             int currentResistance = GetCurrentOverrideResistance();
 
-            //  如果请求的优先级大于当前状态的抗打断等级 强制进入 OverrideState
-            if (request.Priority > currentResistance)
+            bool isInOverride = _player.StateMachine.CurrentState is OverrideState;
+
+            // 不在Override时只允许更高优先级进入
+            if (!isInOverride)
             {
+                if (request.Priority <= currentResistance) return;
+
                 _data.Override.IsActive = true;
                 _data.Override.Request = request;
                 _data.Override.ReturnState = _player.StateMachine.CurrentState;
 
                 var state = _player.StateRegistry.GetState<OverrideState>();
                 _player.StateMachine.ChangeState(state);
+                return;
             }
+
+            // 在Override时 允许同优先级或更高优先级刷新
+            if (request.Priority < currentResistance) return;
+
+            // 若clip相同则忽略避免重复Apply
+            if (_data.Override.IsActive && _data.Override.Request.Clip == request.Clip) return;
+
+            _data.Override.IsActive = true;
+            _data.Override.Request = request;
+
+            // 关键 重新触发Apply让新动画立刻播放
+            var overrideState = (OverrideState)_player.StateMachine.CurrentState;
+            overrideState.ForceReapply();
         }
 
         /// <summary>
