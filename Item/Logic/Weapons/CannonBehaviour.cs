@@ -69,6 +69,13 @@ namespace BBBNexus
                     _ikActive = true;
                 }
             }
+            
+            // ?? 立刻设置 muzzle，不等瞄准时再设置
+            if (_muzzle != null && _player != null && _player.RuntimeData != null)
+            {
+                _player.RuntimeData.CurrentAimReference = _muzzle;
+            }
+            
             float equipAnimDuration = _cannonConfig != null ? _cannonConfig.EquipEndTime : 0.5f;
             _equipEndTime = Time.time + equipAnimDuration;
             if (_cannonConfig != null && _cannonConfig.EquipAnim != null && _player != null)
@@ -134,9 +141,9 @@ namespace BBBNexus
                     {
                         _player.AnimFacade.PlayTransition(_cannonConfig.AimAnim, _cannonConfig.AnimPlayOptions);
                     }
-                    if (_player != null && _player.RuntimeData != null && _muzzle != null)
+                    if (_player != null && _player.RuntimeData != null)
                     {
-                        _player.RuntimeData.CurrentAimReference = _muzzle;
+                        // ?? 瞄准时只改意图
                         _player.RuntimeData.WantsLookAtIK = true;
                     }
                 }
@@ -148,8 +155,7 @@ namespace BBBNexus
                     }
                     if (_player != null && _player.RuntimeData != null)
                     {
-                        if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                            _player.RuntimeData.CurrentAimReference = null;
+                        // ?? 仅改意图
                         _player.RuntimeData.WantsLookAtIK = false;
                     }
                 }
@@ -181,7 +187,8 @@ namespace BBBNexus
             _isEquipping = false;
             if (_muzzleFlash != null) _muzzleFlash.Stop();
 
-            ClearPlayerIKIfOwned();
+            // IK 清理职责已转移到 EquipmentDriver
+            // 不再在此调用 ClearPlayerIKIfOwned()
 
             if (_cannonConfig != null)
             {

@@ -68,6 +68,14 @@ namespace BBBNexus
                     _ikActive = true;
                 }
             }
+            
+            // 🆕 立刻设置 muzzle，不等瞄准时再设置
+            // 这样 FinalIK 始终有有效的引用，避免切装备时 NullRef
+            if (_muzzle != null && _player != null && _player.RuntimeData != null)
+            {
+                _player.RuntimeData.CurrentAimReference = _muzzle;
+            }
+            
             float equipAnimDuration = _akconfig.EquipEndTime;
             _equipEndTime = Time.time + equipAnimDuration;
             if (_akconfig != null && _akconfig.EquipAnim != null && _player != null)
@@ -133,9 +141,9 @@ namespace BBBNexus
                     {
                         _player.AnimFacade.PlayTransition(_akconfig.AimAnim, _akconfig.AnimPlayOptions);
                     }
-                    if (_player != null && _player.RuntimeData != null && _muzzle != null)
+                    if (_player != null && _player.RuntimeData != null)
                     {
-                        _player.RuntimeData.CurrentAimReference = _muzzle;
+                        // 🔄 瞄准时只改意图，muzzle 已在装备时设置
                         _player.RuntimeData.WantsLookAtIK = true;
                     }
                 }
@@ -147,8 +155,7 @@ namespace BBBNexus
                     }
                     if (_player != null && _player.RuntimeData != null)
                     {
-                        if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                            _player.RuntimeData.CurrentAimReference = null;
+                        // 🔄 仅改意图，不清理 CurrentAimReference
                         _player.RuntimeData.WantsLookAtIK = false;
                     }
                 }
@@ -163,24 +170,11 @@ namespace BBBNexus
             }
         }
 
-        private void ClearPlayerIKIfOwned()
-        {
-            if (_player == null || _player.RuntimeData == null) return;
-
-            _player.RuntimeData.LeftHandGoal = null;
-            _player.RuntimeData.WantsLeftHandIK = false;
-            _player.RuntimeData.CurrentAimReference = null;
-            _player.RuntimeData.WantsLookAtIK = false;
-        }
-
         // 强制卸载
         public void OnForceUnequip()
         {
             _isEquipping = false;
             if (_muzzleFlash != null) _muzzleFlash.Stop();
-
-            // 立刻清理 IK 意图与引用，避免切枪时 FinalIK 继续引用已回收/失活的目标导致空引用。
-            ClearPlayerIKIfOwned();
 
             if (_akconfig != null)
             {

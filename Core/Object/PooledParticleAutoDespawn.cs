@@ -23,12 +23,14 @@ namespace BBBNexus
 
         private void Awake()
         {
-            Cache();
+            CacheIfNeeded();
         }
 
         public void OnSpawned()
         {
-            Cache();
+            // GC NOTE: GetComponentsInChildren<ParticleSystem>() 返回数组会分配。
+            // 这里缓存一次后复用，避免 Spawn 时反复分配。
+            CacheIfNeeded();
 
             for (int i = 0; i < _systems.Length; i++)
             {
@@ -44,7 +46,7 @@ namespace BBBNexus
         public void OnDespawned()
         {
             _killAt = 0f;
-            Cache();
+            CacheIfNeeded();
             for (int i = 0; i < _systems.Length; i++)
             {
                 var ps = _systems[i];
@@ -71,9 +73,11 @@ namespace BBBNexus
             }
         }
 
-        private void Cache()
+        private void CacheIfNeeded()
         {
             if (_systems != null && _systems.Length > 0) return;
+
+            // 仅在第一次（或被外部清空引用时）重新抓取。
             _systems = _includeChildren
                 ? GetComponentsInChildren<ParticleSystem>(true)
                 : GetComponents<ParticleSystem>();

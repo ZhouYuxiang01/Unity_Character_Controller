@@ -52,6 +52,16 @@ namespace BBBNexus
 
         private readonly HashSet<int> _damagedTargetIds = new HashSet<int>();
 
+        // GC FIX: Physics.OverlapSphere 会分配 Collider[]。
+        // 使用 OverlapSphereNonAlloc + 复用缓冲区；容量不足时自动扩容（扩容会分配，但只在需要时发生，避免持续 GC）。
+        private Collider[] _overlapBuffer = new Collider[32];
+
+        // GC FIX: OnSpawned 中 GetComponentsInChildren<Collider>() 返回数组会分配。
+        // 缓存一次后复用。
+        private Collider[] _cachedColliders;
+
+        private Rigidbody _cachedRb;
+
         private bool UsePool => SimpleObjectPoolSystem.Shared != null;
 
         #region Pool
@@ -62,19 +72,22 @@ namespace BBBNexus
 
             _damagedTargetIds.Clear();
 
+            CacheComponents();
+
             // 复用兜底：确保 collider 打开
-            var cols = GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < cols.Length; i++)
+            if (_cachedColliders != null)
             {
-                if (cols[i] != null) cols[i].enabled = true;
+                for (int i = 0; i < _cachedColliders.Length; i++)
+                {
+                    if (_cachedColliders[i] != null) _cachedColliders[i].enabled = true;
+                }
             }
 
             // 清速度，避免复用继承（发射端会重新赋 velocity）
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null)
+            if (_cachedRb != null)
             {
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                _cachedRb.velocity = Vector3.zero;
+                _cachedRb.angularVelocity = Vector3.zero;
             }
         }
 
@@ -85,14 +98,30 @@ namespace BBBNexus
 
             _damagedTargetIds.Clear();
 
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null)
+            CacheComponents();
+
+            if (_cachedRb != null)
             {
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                _cachedRb.velocity = Vector3.zero;
+                _cachedRb.angularVelocity = Vector3.zero;
             }
         }
         #endregion
+
+        private void CacheComponents()
+        {
+            if (_cachedRb == null) _cachedRb = GetComponent<Rigidbody>();
+
+            // 注意：GetComponentsInChildren 每次调用都会分配新数组。
+            // 这里在第一次使用时缓存，后续不再分配。
+            if (_cachedColliders == null || _cachedColliders.Length == 0)
+            {
+                _cachedColliders = GetComponentsInChildren<Collider>(true);
+#if UNITY_EDITOR
+                // Debug.Log("[GC-RISK FIXED] SimpleProjectile cached Collider[] to avoid per-spawn GetComponentsInChildren allocations.", this);
+#endif
+            }
+        }
 
         private void OnEnable()
         {
@@ -169,17 +198,32 @@ namespace BBBNexus
             // 如果 DamageLayers 配成 Nothing(0)，则回退使用 HitLayers，避免“看起来命中了但伤害层为空”
             var layers = DamageLayers.value != 0 ? DamageLayers : HitLayers;
 
-            var cols = Physics.OverlapSphere(center, DamageRadius, layers, DamageQueryTrigger);
-            if (cols == null || cols.Length == 0) return;
+            int count = Physics.OverlapSphereNonAlloc(center, DamageRadius, _overlapBuffer, layers, DamageQueryTrigger);
+
+            // 缓冲区不够则扩容重试一次（扩容会产生一次性 GC/托管数组分配，但避免每次 OverlapSphere 都分配）
+            if (count == _overlapBuffer.Length)
+            {
+                int newSize = Mathf.Min(_overlapBuffer.Length * 2, 2048);
+                if (newSize > _overlapBuffer.Length)
+                {
+#if UNITY_EDITOR
+                    // Debug.Log($"[GC-RISK NOTE] SimpleProjectile overlap buffer resized {_overlapBuffer.Length} -> {newSize} (one-time alloc).", this);
+#endif
+                    _overlapBuffer = new Collider[newSize];
+                    count = Physics.OverlapSphereNonAlloc(center, DamageRadius, _overlapBuffer, layers, DamageQueryTrigger);
+                }
+            }
+
+            if (count <= 0) return;
 
             _damagedTargetIds.Clear();
 
             var hitCount = 0;
             var req = new DamageRequest(DamageAmount);
 
-            for (int i = 0; i < cols.Length; i++)
+            for (int i = 0; i < count; i++)
             {
-                var c = cols[i];
+                var c = _overlapBuffer[i];
                 if (c == null) continue;
 
                 IDamageable d = FindDamageable(c);

@@ -76,14 +76,28 @@ namespace BBBNexus
             _data.Arbitration.BlockIK = isDegraded;
             _data.Arbitration.BlockFacial = isDegraded;
 
-            // 仅在最低 LOD 时启用 Animator 的更严格裁剪
-            if (lod == CharacterLOD.Low)
+            // 根据 LOD 级别调整 Animator 的实际工作状态
+            // High: 完全启用，所有系统工作
+            // Medium: 禁用动画更新，但保持结构 (避免频繁启用/禁用导致的抖动)
+            // Low: 完全禁用 Animator，仅保留位移
+            switch (lod)
             {
-                _player.animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-            }
-            else
-            {
-                _player.animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                case CharacterLOD.High:
+                    _player.animator.enabled = true;
+                    _player.animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                    break;
+
+                case CharacterLOD.Medium:
+                    // 禁用 Animator 的更新以节省 CPU
+                    // 保留当前动画姿态，不进行任何混合或参数计算
+                    _player.animator.enabled = false;
+                    break;
+
+                case CharacterLOD.Low:
+                    // 最严格的降级：彻底关闭 Animator
+                    _player.animator.enabled = false;
+                    _player.animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                    break;
             }
         }
     }

@@ -11,6 +11,48 @@ namespace BBBNexus
         [SerializeField] private FullBodyBipedIK _fbbik;
         [SerializeField] private AimIK _aimIK;
 
+        [Header("AimIK Runtime Proxies")]
+        [Tooltip("运行时用于承接 AimIK.solver.target 的代理点。会在 Awake 时自动创建为当前对象子节点。")]
+        [SerializeField] private Transform _aimTargetProxy;
+
+        [Tooltip("当武器 AimReference 丢失/被对象池失活时，AimIK.solver.transform 的兜底挂点（建议绑定到角色胸/头骨骼）。")]
+        [SerializeField] private Transform _aimPivotFallback;
+
+        private void Awake()
+        {
+            EnsureAimTargetProxy();
+            EnsureAimPivotFallback();
+
+            // 在 Prefab/场景里先绑定一次，避免运行时 inspector 一直显示 None
+            if (_aimIK != null)
+            {
+                if (_aimIK.solver.target == null) _aimIK.solver.target = _aimTargetProxy;
+
+                // 关键：AimIK 运行时 solver.transform 不能为空，否则 FinalIK 内部会 NRE（IKSolverAim.GetAngle 等处）
+                if (_aimIK.solver.transform == null) _aimIK.solver.transform = _aimPivotFallback;
+            }
+        }
+
+        private void EnsureAimTargetProxy()
+        {
+            if (_aimTargetProxy != null) return;
+
+            // 创建一个稳定的 Transform，永远不 Destroy，不跟武器走
+            var go = new GameObject("AimTarget_Proxy");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = Vector3.forward * 5f;
+            go.transform.localRotation = Quaternion.identity;
+            _aimTargetProxy = go.transform;
+        }
+
+        private void EnsureAimPivotFallback()
+        {
+            if (_aimPivotFallback != null) return;
+
+            // 默认兜底：使用本物体 transform（通常挂在角色IK根/角色身上，总是有效）
+            _aimPivotFallback = transform;
+        }
+
         // 映射变换目标 将黑板中的引用直接注入求解器端点
         public override void SetIKTarget(IKTarget target, Transform targetTransform, float weight)
         {
@@ -19,32 +61,35 @@ namespace BBBNexus
                 case IKTarget.LeftHand:
                     if (_fbbik != null)
                     {
-                        // 绑定左手效应器 注入物理挂点并同步权重
                         _fbbik.solver.leftHandEffector.target = targetTransform;
                         _fbbik.solver.leftHandEffector.positionWeight = weight;
-                        //_fbbik.solver.leftHandEffector.rotationWeight = weight;
-                        // 注意 权重过高可能导致动作僵硬 需要由意图管线平滑处理
                     }
                     break;
 
                 case IKTarget.RightHand:
                     if (_fbbik != null)
                     {
-                        // 绑定右手效应器 逻辑与左手保持一致
                         _fbbik.solver.rightHandEffector.target = targetTransform;
                         _fbbik.solver.rightHandEffector.positionWeight = weight;
-                        //_fbbik.solver.rightHandEffector.rotationWeight = weight;
                     }
                     break;
 
                 case IKTarget.AimReference:
                     if (_aimIK != null)
                     {
-                        // 动态替换瞄准发力点 这是实现枪口指向的核心
-                        // 通常这个点会绑定在武器的枪口位置 经验是:局部坐标下 Z轴朝前 Y轴朝上
-                        _aimIK.solver.transform = targetTransform;
+                        // Aim Transform (pivot) 必须是一个稳定且始终有效的 Transform（例如武器枪口/武器根）。
+                        // 若这里为空，FinalIK 会在 IKSolverAim.OnUpdate() 警告/报错。
+                        EnsureAimTargetProxy();
+                        EnsureAimPivotFallback();
 
-                        // 注意 瞄准点的权重通常由头部追踪接口统一管控
+                        // Aim Transform (pivot) 必须始终是有效 Transform。
+                        // 武器 muzzle 为 null/失活时，回退到 fallback，避免 FinalIK 内部空引用。
+                        _aimIK.solver.transform = targetTransform != null ? targetTransform : _aimPivotFallback;
+
+                        // Target 永远绑定到 proxy，避免 target 为空导致 solver 走 null 分支。
+                        if (_aimIK.solver.target == null) _aimIK.solver.target = _aimTargetProxy;
+
+                        if (!_aimIK.enabled) _aimIK.enabled = true;
                     }
                     break;
             }
@@ -58,17 +103,27 @@ namespace BBBNexus
                 case IKTarget.HeadLook:
                     if (_aimIK != null)
                     {
-                        // 驱动视线追踪 将求解器目标点指向指定的空间位置
+                        EnsureAimTargetProxy();
+                        EnsureAimPivotFallback();
+
+                        // 保证 pivot 非空
+                        if (_aimIK.solver.transform == null) _aimIK.solver.transform = _aimPivotFallback;
+
+                        // 永久目标点：AimIK 的 Target 始终是 proxy Transform
+                        _aimTargetProxy.position = position;
+                        _aimTargetProxy.rotation = rotation;
+
+                        if (_aimIK.solver.target == null) _aimIK.solver.target = _aimTargetProxy;
+
+                        // 仍然写 IKPosition/Weight，兼容 FinalIK 的内部流程（target != null 时会覆盖 IKPosition）
                         _aimIK.solver.IKPosition = position;
                         _aimIK.solver.IKPositionWeight = weight;
-                        // 这里通常由意图管线传入相机的权威朝向点位
                     }
                     break;
 
                 case IKTarget.LeftHand:
                     if (_fbbik != null)
                     {
-                        // 直接通过三维坐标约束手部 常见于翻越斜面时的动态对齐
                         _fbbik.solver.leftHandEffector.position = position;
                         _fbbik.solver.leftHandEffector.positionWeight = weight;
                     }
@@ -77,7 +132,6 @@ namespace BBBNexus
                 case IKTarget.RightHand:
                     if (_fbbik != null)
                     {
-                        // 右手空间对齐逻辑 
                         _fbbik.solver.rightHandEffector.position = position;
                         _fbbik.solver.rightHandEffector.positionWeight = weight;
                     }
@@ -93,7 +147,6 @@ namespace BBBNexus
                 case IKTarget.LeftHand:
                     if (_fbbik != null)
                     {
-                        // 动态调整左手混合权重 决定肢体跟随挂点的强烈程度
                         _fbbik.solver.leftHandEffector.positionWeight = weight;
                         _fbbik.solver.leftHandEffector.rotationWeight = weight;
                     }
@@ -102,21 +155,31 @@ namespace BBBNexus
                 case IKTarget.RightHand:
                     if (_fbbik != null)
                     {
-                        // 右手权重调整 保证双手在持握物品实例时逻辑统一
                         _fbbik.solver.rightHandEffector.positionWeight = weight;
                         _fbbik.solver.rightHandEffector.rotationWeight = weight;
+                    }
+                    break;
+
+                case IKTarget.AimReference:
+                    if (_aimIK != null)
+                    {
+                        // 不要把 solver.transform 清空。
+                        // AimIKWeight=0 时 solver 早退，但内部仍可能访问 transform 做连续性计算/调试。
+                        // pivot 永远保持一个有效引用，避免 NullReferenceException。
+                        EnsureAimPivotFallback();
+                        if (_aimIK.solver.transform == null) _aimIK.solver.transform = _aimPivotFallback;
                     }
                     break;
 
                 case IKTarget.HeadLook:
                     if (_aimIK != null)
                     {
-                        // 控制视线偏移的权重 0 为不生效 1 为完全对齐
                         _aimIK.solver.IKPositionWeight = weight;
                     }
                     break;
             }
         }
+
         public override void EnableAllIK()
         {
             if (_fbbik != null) _fbbik.enabled = true;

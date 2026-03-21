@@ -7,6 +7,11 @@ namespace BBBNexus
     /// <summary>
     /// 整个BBBNexus系统的 Root 节点唯一的 Monobehaviour 驱动源 
     /// 不包含任何具体游戏逻辑 仅负责组件整合、内存分配与严格的时序指令分发 
+    /// 
+    /// Pooling note:
+    /// - Awake: 只做一次性分配/依赖注入（对象池复用时不会重复调用）。
+    /// - OnSpawned: 每次从池取出时做“帧状态复位 + 轻量重启”。
+    /// - OnDespawned: 每次回收时做“回调/引用清理”，避免引用悬挂。
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(AnimancerComponent))]
@@ -14,7 +19,7 @@ namespace BBBNexus
     [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(AudioSource))]
     [DefaultExecutionOrder(-300)]
-    public class PlayerController : MonoBehaviour, IDamageable
+    public class PlayerController : MonoBehaviour, IDamageable, IPoolable
     {
         [Header("--- 输入与表现源  ---")]
         [Tooltip("输入源 - 可拖拽赋值任何继承 IInputSourceBase 的组件")]
@@ -78,6 +83,8 @@ namespace BBBNexus
         //调试用缓存
         private PlayerBaseState _lastState;
         public event System.Action OnEquipmentChanged;
+
+        private bool _booted;
 
         // Awake 负责内存分配、找组件、依赖注入。所有初始化都在这里完成。
         private void Awake()
@@ -170,56 +177,91 @@ namespace BBBNexus
 
         private void Start()
         {
+            // 非池化使用方式：Start 会触发一次 Boot。
+            BootIfNeeded();
+        }
+
+        private void BootIfNeeded()
+        {
+            if (_booted) return;
+
             InitializeCamera();
             SetupAnimationLayers();
             InitializeEquipments();
             BootUpStateMachines();
+
+            _booted = true;
         }
 
-        private void InitializeCamera()
+        public void OnSpawned()
         {
-            if (PlayerCamera == null && Camera.main != null) PlayerCamera = Camera.main.transform;
-            RuntimeData.CameraTransform = PlayerCamera;
-        }
+            // 对象池出池：确保启用状态下具备可运行的初始状态。
+            // 这里不做 new（避免反复分配），只做“轻量重启/复位”。
 
-        private void SetupAnimationLayers()
-        {
-            if (AnimFacade != null)
+            // 如果走对象池，Start 可能不会再次调用，确保 boot。
+            BootIfNeeded();
+
+            // 复位帧级意图，防止复用时继承上一轮输入/仲裁结果。
+            RuntimeData?.ResetIntetnt();
+
+            // 恢复 root motion 受控状态（某些 full-body override 可能改过它）。
+            if (Animancer != null && Animancer.Animator != null)
+                Animancer.Animator.applyRootMotion = false;
+
+            // 清理 IK 残留（目标可能在上次武器上）。
+            if (RuntimeData != null)
             {
-                AnimFacade.SetLayerMask(1, Config.Core.UpperBodyMask);
-                AnimFacade.SetLayerMask(2, Config.Core.FacialMask);
+                RuntimeData.CurrentAimReference = null;
+                RuntimeData.WantsLookAtIK = false;
+                RuntimeData.LeftHandGoal = null;
+                RuntimeData.RightHandGoal = null;
+                RuntimeData.WantsLeftHandIK = false;
+                RuntimeData.WantsRightHandIK = false;
+            }
+
+            // 确保 ArbiterPipeline 本帧不会读到旧请求（例如 ActionOverride）。
+            // ActionArbitration/Override 结构若是 struct，直接归零即可。
+            if (RuntimeData != null)
+            {
+                RuntimeData.Override.IsActive = false;
             }
         }
 
-        private void InitializeEquipments()
+        public void OnDespawned()
         {
-            InventoryController.Initialize();
+            // 对象池回收：解除潜在引用，防止 callback/IK/装备对象继续持有该 PlayerController。
 
-            EquippableItemSO[] defaults = new EquippableItemSO[] { DefaultEquipment1, DefaultEquipment2, DefaultEquipment3 };
-            ItemInstance firstToEquip = null;
+            // 清空动画层回调，避免失活后仍触发逻辑。
+            AnimFacade?.ClearOverrideOnEndCallback();
+            AnimFacade?.ClearOnEndCallback(0);
+            AnimFacade?.ClearOnEndCallback(1);
+            AnimFacade?.ClearOnEndCallback(2);
 
-            for (int i = 0; i < defaults.Length; i++)
+            // 让当前武器有机会停特效/解绑。
+            try { EquipmentDriver?.UnequipCurrentItem(); } catch { }
+
+            if (RuntimeData != null)
             {
-                if (defaults[i] != null)
-                {
-                    var instance = new ItemInstance(defaults[i], 1);
-                    InventoryController.AssignItemToSlot(i, instance);
-                    if (firstToEquip == null) firstToEquip = instance;
-                }
+                RuntimeData.CurrentItem = null;
+                RuntimeData.CurrentAimReference = null;
+                RuntimeData.WantsLookAtIK = false;
+                RuntimeData.WantsToFire = false;
+                RuntimeData.ResetIntetnt();
             }
-
-            if (firstToEquip != null) RuntimeData.CurrentItem = firstToEquip;
         }
 
-        private void BootUpStateMachines()
+        private void OnEnable()
         {
-            if (StateRegistry.InitialState != null) StateMachine.Initialize(StateRegistry.InitialState);
-            if (UpperBodyCtrl.StateRegistry.InitialState != null) UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
+            // 对象池激活时 Start 不一定每次都会走（取决于场景/脚本执行顺序），这里兜底。
+            if (Application.isPlaying)
+                BootIfNeeded();
         }
 
         // 逻辑与意图更新 (在动画引擎运算之前)
         private void Update()
         {
+            if (!_booted) return; // pooling safety
+
             //Debug.Log(Animancer.Layers.Count);
 
             _lastState = StateMachine.CurrentState as PlayerBaseState;
@@ -264,6 +306,8 @@ namespace BBBNexus
         //物理与表现层的更新 (在动画引擎运算之后)
         private void LateUpdate()
         {
+            if (!_booted) return; // pooling safety
+
             StateMachine.CurrentState?.PhysicsUpdate();
 
             _ikController.Update();
@@ -286,6 +330,47 @@ namespace BBBNexus
             // 兼容旧调用点：如果要求立即刷新，则直接跑一次仲裁。
             if (flushImmediately)
                 ArbiterPipeline?.Action?.Arbitrate();
+        }
+
+        private void InitializeCamera()
+        {
+            if (PlayerCamera == null && Camera.main != null) PlayerCamera = Camera.main.transform;
+            RuntimeData.CameraTransform = PlayerCamera;
+        }
+
+        private void SetupAnimationLayers()
+        {
+            if (AnimFacade != null && Config != null)
+            {
+                AnimFacade.SetLayerMask(1, Config.Core.UpperBodyMask);
+                AnimFacade.SetLayerMask(2, Config.Core.FacialMask);
+            }
+        }
+
+        private void InitializeEquipments()
+        {
+            InventoryController.Initialize();
+
+            EquippableItemSO[] defaults = new EquippableItemSO[] { DefaultEquipment1, DefaultEquipment2, DefaultEquipment3 };
+            ItemInstance firstToEquip = null;
+
+            for (int i = 0; i < defaults.Length; i++)
+            {
+                if (defaults[i] != null)
+                {
+                    var instance = new ItemInstance(defaults[i], 1);
+                    InventoryController.AssignItemToSlot(i, instance);
+                    if (firstToEquip == null) firstToEquip = instance;
+                }
+            }
+
+            if (firstToEquip != null) RuntimeData.CurrentItem = firstToEquip;
+        }
+
+        private void BootUpStateMachines()
+        {
+            if (StateRegistry.InitialState != null) StateMachine.Initialize(StateRegistry.InitialState);
+            if (UpperBodyCtrl.StateRegistry.InitialState != null) UpperBodyCtrl.StateMachine.Initialize(UpperBodyCtrl.StateRegistry.InitialState);
         }
 
         #region IDamageable 接口实现

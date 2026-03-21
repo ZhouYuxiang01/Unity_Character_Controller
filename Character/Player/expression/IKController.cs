@@ -44,6 +44,10 @@ namespace BBBNexus
         {
             if (_ikSource == null) return;
 
+            // 物品切换/对象池回收场景下：AimReference 可能指向已失活的 muzzle。
+            // 这里做一次“运行时自愈”，保证底层 IK 不会持续追踪无效 Transform。
+            SanitizeAimReference();
+
             if (_data.Arbitration.BlockIK)
             {
                 if (_isIKActive)
@@ -149,6 +153,31 @@ namespace BBBNexus
                     _lookAtVelocity = 0f;
                     _currentLookAtPosition = _player.transform.position + _player.transform.forward * 5f;
                 }
+            }
+        }
+
+        private void SanitizeAimReference()
+        {
+            // Unity 的特殊 null：被 Destroy 的对象在 C# 层会表现为 == null。
+            // 对象池失活：Transform 仍存在但 gameObject.activeInHierarchy=false。
+            Transform current = _data.CurrentAimReference;
+
+            bool isInvalid = current == null ||
+                            !current ||
+                            current.gameObject == null ||
+                            !current.gameObject.activeInHierarchy;
+
+            if (!isInvalid) return;
+
+            // 清理黑板，防止后续系统继续写入旧引用。
+            _data.CurrentAimReference = null;
+            _data.WantsLookAtIK = false;
+
+            // 同步清理 IKController 内部缓存 + 底层权重，避免 “上一个 muzzle 还在显示”。
+            if (_lastAimReference != null)
+            {
+                _ikSource.UpdateIKWeight(IKTarget.AimReference, 0f);
+                _lastAimReference = null;
             }
         }
 

@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0c806d9ed674334ebf82ea2c74d2e4c, type: 3}
   m_Name: AITacticalConfig_
   m_EditorClassIdentifier: 
-  EngagementRange: 15
+  EngagementRange: 8
   AttackRange: 2
   JumpCooldown: 1.5
   DoubleJumpDelay: 0.35
   DodgeTriggerRange: 20
-  DodgeCooldown: 0.1
+  DodgeCooldown: 1.2
   DodgeChance: 0.6
-  DodgeMaxAttempts: 10
+  DodgeMaxAttempts: 200
   RollTriggerRange: 20
-  RollCooldown: 2
+  RollCooldown: 4
   RollChance: 0.25
   RollMaxAttempts: 2
   StrafeCooldownMin: 1.5

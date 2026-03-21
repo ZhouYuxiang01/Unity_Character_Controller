@@ -86,10 +86,49 @@ namespace BBBNexus
                 }
                 _currentWeaponInstance = null;
             }
+            
+            // 清理黑板上的所有 IK 引用与意图，避免切装备时 IK 继续追踪失活的目标
+            // 这是统一的清理点，保证即使武器的OnForceUnequip有漏洞也能兜底
+            ClearAllIKReferencesFromRuntimeData();
+            
             _player.NotifyEquipmentChanged();
             CurrentItemData = null;
             CurrentItemInstance = null;
             CurrentItemDirector = null;
+        }
+
+        /// <summary>
+        /// 清理运行时黑板上的所有 IK 引用与意图
+        /// 这个方法由两部分组成：
+        /// 1. 主清理逻辑：清理所有IK相关的黑板数据
+        /// 2. 防御性检查：防止武器清理不彻底导致的悬空引用
+        /// 
+        /// 为什么需要两层清理？
+        /// - 对象池失活时，Despawn() 在 ClearAllIKReferencesFromRuntimeData() 之前执行
+        /// - 武器的 OnForceUnequip() 也可能有漏洞或异常
+        /// - IKController 的 SanitizeAimReference() 是最后的兜底，但在 Update 中才触发
+        /// 
+        /// 职责明确：EquipmentDriver 在物品销毁时负责彻底清理黑板
+        /// </summary>
+        private void ClearAllIKReferencesFromRuntimeData()
+        {
+            if (_player?.RuntimeData == null) return;
+
+            // 左手 IK：由具体武器负责清理，但我们在此做兜底清理
+            _player.RuntimeData.WantsLeftHandIK = false;
+            _player.RuntimeData.LeftHandGoal = null;
+
+            // 右手 IK：当前未使用，但为了完整性也清理
+            _player.RuntimeData.WantsRightHandIK = false;
+            _player.RuntimeData.RightHandGoal = null;
+
+            // 瞄准 IK：关键！防止指向已失活的 muzzle（对象池失活的Transform）
+            // 由武器在 OnUpdateLogic 中动态设置，需要彻底清理
+            _player.RuntimeData.WantsLookAtIK = false;
+            _player.RuntimeData.CurrentAimReference = null;
+
+            // 头部注视点：清理相关意图
+            _player.RuntimeData.LookAtPosition = Vector3.zero;
         }
     }
 }

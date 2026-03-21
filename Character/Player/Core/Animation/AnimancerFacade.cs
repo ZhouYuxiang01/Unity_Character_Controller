@@ -1,4 +1,4 @@
-﻿    using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Animancer;
@@ -18,6 +18,10 @@ namespace BBBNexus
 
         // 回调包装类的对象池 避免闭包GC
         private Stack<CallbackWrapper> _wrapperPool = new Stack<CallbackWrapper>();
+
+        // GC FIX: OnDisable 原实现 `new List<int>(_layerOnEndActions.Keys)` 会分配新 List 和内部数组。
+        // 这里使用静态 scratch list 复用避免禁用/销毁时产生 GC 尖刺。
+        private static readonly List<int> _layerKeyScratch = new List<int>(8);
 
         /// <summary>
         /// 专供 Override/代理模式的逻辑回调通道
@@ -68,16 +72,31 @@ namespace BBBNexus
             _animancer = GetComponent<AnimancerComponent>();
         }
 
+        private void EnsureAnimancer()
+        {
+            // 对象池预热/启用早期：可能在 Awake 之前就有逻辑调用到 Facade（例如状态机 Boot）。
+            // 这里做懒初始化避免 NullReference。
+            if (_animancer == null)
+                _animancer = GetComponent<AnimancerComponent>();
+        }
+
         // 脚本禁用时必须强制清空所有层级的回调 
         // 这是为了防止角色销毁后 内存里还挂着没跑完的动画逻辑 
         private void OnDisable()
         {
             if (_layerOnEndActions.Count > 0)
             {
-                var keys = new List<int>(_layerOnEndActions.Keys);
-                for (int i = 0; i < keys.Count; i++)
+#if UNITY_EDITOR
+                // GC RISK NOTE: 这里不能 new List(keys)，否则会产生托管分配。
+                // Debug.Log("[GC-RISK FIXED] AnimancerFacade.OnDisable: reused scratch list instead of allocating new List<int>.");
+#endif
+                _layerKeyScratch.Clear();
+                foreach (var kv in _layerOnEndActions)
+                    _layerKeyScratch.Add(kv.Key);
+
+                for (int i = 0; i < _layerKeyScratch.Count; i++)
                 {
-                    ClearOnEndCallback(keys[i]);
+                    ClearOnEndCallback(_layerKeyScratch[i]);
                 }
             }
             _layerOnEndActions.Clear();
@@ -87,10 +106,14 @@ namespace BBBNexus
         public override void PlayClip(AnimationClip clip, AnimPlayOptions options)
         {
             if (clip == null) return;
+            EnsureAnimancer();
+            if (_animancer == null) return;
+
             int layerIndex = options.Layer;
 
             ClearOnEndCallback(layerIndex);
             var layer = GetLayerOrFallback(layerIndex);
+            if (layer == null) return;
 
             // 根据配置决定是瞬间切换还是淡入 
             var state = options.FadeDuration >= 0
@@ -111,10 +134,15 @@ namespace BBBNexus
             var transition = transitionObj as ITransition;
             if (transition == null) return;
 
+            EnsureAnimancer();
+            if (_animancer == null) return;
+
             int layerIndex = options.Layer;
             ClearOnEndCallback(layerIndex);
 
             var layer = GetLayerOrFallback(layerIndex);
+            if (layer == null) return;
+
             var state = options.FadeDuration >= 0
                 ? layer.Play(transition, options.FadeDuration)
                 : layer.Play(transition);
@@ -238,7 +266,15 @@ namespace BBBNexus
         // 强行清理指定层的事件流 
         public override void ClearOnEndCallback(int layerIndex = 0)
         {
-            var state = GetLayerOrFallback(layerIndex).CurrentState;
+            EnsureAnimancer();
+            if (_animancer == null)
+            {
+                _layerOnEndActions.Remove(layerIndex);
+                return;
+            }
+
+            var layer = GetLayerOrFallback(layerIndex);
+            var state = layer != null ? layer.CurrentState : null;
             if (state != null)
             {
                 state.Events(this).OnEnd = null;
@@ -285,6 +321,7 @@ namespace BBBNexus
         // 从而出现“所有动画都不播放/权重为0/一直马步”等现象
         private AnimancerLayer GetLayerOrFallback(int layerIndex)
         {
+            EnsureAnimancer();
             if (_animancer == null) return null;
 
             var layers = _animancer.Layers;
