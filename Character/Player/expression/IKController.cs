@@ -76,13 +76,22 @@ namespace BBBNexus
                 return;
             }
 
-            // AimIK基准点更新
-            if (_data.IsAiming)
+            // AimIK 基准点更新（需要可逆：从瞄准切到非瞄准时必须清理）
+            if (_data.IsAiming && _data.WantsLookAtIK && _data.CurrentAimReference != null)
             {
                 if (_data.CurrentAimReference != _lastAimReference)
                 {
                     _ikSource.SetIKTarget(IKTarget.AimReference, _data.CurrentAimReference, 1f);
                     _lastAimReference = _data.CurrentAimReference;
+                }
+            }
+            else
+            {
+                // 非瞄准/无引用：确保 AimReference 权重归零，并清掉缓存引用
+                if (_lastAimReference != null)
+                {
+                    _ikSource.UpdateIKWeight(IKTarget.AimReference, 0f);
+                    _lastAimReference = null;
                 }
             }
 

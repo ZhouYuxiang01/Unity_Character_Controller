@@ -3,7 +3,7 @@ using UnityEngine;
 namespace BBBNexus
 {
     // 加农炮行为 负责装备瞄准开火IK后坐力等
-    public class CannonBehaviour : MonoBehaviour, IHoldableItem
+    public class CannonBehaviour : MonoBehaviour, IHoldableItem, IPoolable
     {
         [Header("--- 表现与挂点 ---")]
         // 左手握点
@@ -164,11 +164,30 @@ namespace BBBNexus
             }
         }
 
+        // 清除玩家的IK引用
+        private void ClearPlayerIKIfOwned()
+        {
+            if (_player == null || _player.RuntimeData == null) return;
+
+            if (_player.RuntimeData.LeftHandGoal == _leftHandGoal)
+                _player.RuntimeData.LeftHandGoal = null;
+
+            _player.RuntimeData.WantsLeftHandIK = false;
+
+            if (_player.RuntimeData.CurrentAimReference == _muzzle)
+                _player.RuntimeData.CurrentAimReference = null;
+
+            _player.RuntimeData.WantsLookAtIK = false;
+        }
+
         // 强制卸载
         public void OnForceUnequip()
         {
             _isEquipping = false;
             if (_muzzleFlash != null) _muzzleFlash.Stop();
+
+            ClearPlayerIKIfOwned();
+
             if (_cannonConfig != null)
             {
                 _ikDisableScheduled = true;
@@ -176,19 +195,9 @@ namespace BBBNexus
             }
             else
             {
-                if (_player != null && _player.RuntimeData != null)
-                {
-                    _player.RuntimeData.WantsLeftHandIK = false;
-                    _player.RuntimeData.LeftHandGoal = null;
-                    _ikActive = false;
-                }
+                _ikActive = false;
             }
-            if (_player != null && _player.RuntimeData != null)
-            {
-                if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                    _player.RuntimeData.CurrentAimReference = null;
-                _player.RuntimeData.WantsLookAtIK = false;
-            }
+
             if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == null)
             {
                 if (_cannonConfig != null && _cannonConfig.UnEquipAnim != null)
@@ -196,6 +205,26 @@ namespace BBBNexus
                     _player.AnimFacade.PlayTransition(_cannonConfig.UnEquipAnim, _cannonConfig.UnEquipAnimPlayOptions);
                 }
             }
+        }
+
+        public void OnSpawned()
+        {
+            _isEquipping = false;
+            _wasAiming = false;
+            _ikEnableScheduled = false;
+            _ikDisableScheduled = false;
+            _ikActive = false;
+            _lastFireTime = 0f;
+
+            if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            ClearPlayerIKIfOwned();
+        }
+
+        public void OnDespawned()
+        {
+            if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ClearPlayerIKIfOwned();
         }
 
         // 检查冷却并开火
@@ -214,12 +243,9 @@ namespace BBBNexus
                 GameObject muzzleVFX;
                 if (BBBNexus.SimpleObjectPoolSystem.Shared != null)
                 {
-                    var sp = BBBNexus.SimpleObjectPoolSystem.SpawnParams.Default;
-                    sp.Parent = _muzzle;
-                    sp.Position = _muzzle.position;
-                    sp.Rotation = _muzzle.rotation;
-                    sp.WorldPositionStays = true;
-                    muzzleVFX = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_cannonConfig.MuzzleVFXPrefab, in sp);
+                    muzzleVFX = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_cannonConfig.MuzzleVFXPrefab);
+                    muzzleVFX.transform.SetPositionAndRotation(_muzzle.position, _muzzle.rotation);
+                    muzzleVFX.transform.SetParent(_muzzle, true);
                 }
                 else
                 {
@@ -235,12 +261,9 @@ namespace BBBNexus
                 GameObject proj;
                 if (BBBNexus.SimpleObjectPoolSystem.Shared != null)
                 {
-                    var sp = BBBNexus.SimpleObjectPoolSystem.SpawnParams.Default;
-                    sp.Parent = null;
-                    sp.Position = _muzzle.position;
-                    sp.Rotation = _muzzle.rotation;
-                    sp.WorldPositionStays = true;
-                    proj = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_cannonConfig.ProjectilePrefab, in sp);
+                    proj = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_cannonConfig.ProjectilePrefab);
+                    proj.transform.SetPositionAndRotation(_muzzle.position, _muzzle.rotation);
+                    proj.transform.SetParent(null, true);
                 }
                 else
                 {

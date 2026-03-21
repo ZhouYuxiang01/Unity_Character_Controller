@@ -3,7 +3,7 @@
 namespace BBBNexus
 {
     // 步枪AK47行为 负责装备瞄准开火IK后坐力等
-    public class AK46Behaviour : MonoBehaviour, IHoldableItem
+    public class AK46Behaviour : MonoBehaviour, IHoldableItem, IPoolable
     {
         [Header("--- 表现与挂点 ---")]
         // 左手握点
@@ -163,11 +163,31 @@ namespace BBBNexus
             }
         }
 
+        private void ClearPlayerIKIfOwned()
+        {
+            if (_player == null || _player.RuntimeData == null) return;
+
+            // 只在“当前引用确实指向本武器资源”时才清，避免误伤其它武器。
+            if (_player.RuntimeData.LeftHandGoal == _leftHandGoal)
+                _player.RuntimeData.LeftHandGoal = null;
+
+            _player.RuntimeData.WantsLeftHandIK = false;
+
+            if (_player.RuntimeData.CurrentAimReference == _muzzle)
+                _player.RuntimeData.CurrentAimReference = null;
+
+            _player.RuntimeData.WantsLookAtIK = false;
+        }
+
         // 强制卸载
         public void OnForceUnequip()
         {
             _isEquipping = false;
             if (_muzzleFlash != null) _muzzleFlash.Stop();
+
+            // 立刻清理 IK 意图与引用，避免切枪时 FinalIK 继续引用已回收/失活的目标导致空引用。
+            ClearPlayerIKIfOwned();
+
             if (_akconfig != null)
             {
                 _ikDisableScheduled = true;
@@ -175,19 +195,9 @@ namespace BBBNexus
             }
             else
             {
-                if (_player != null && _player.RuntimeData != null)
-                {
-                    _player.RuntimeData.WantsLeftHandIK = false;
-                    _player.RuntimeData.LeftHandGoal = null;
-                    _ikActive = false;
-                }
+                _ikActive = false;
             }
-            if (_player != null && _player.RuntimeData != null)
-            {
-                if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                    _player.RuntimeData.CurrentAimReference = null;
-                _player.RuntimeData.WantsLookAtIK = false;
-            }
+
             if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == null)
             {
                 if (_akconfig != null && _akconfig.UnEquipAnim != null)
@@ -213,12 +223,9 @@ namespace BBBNexus
                 GameObject muzzleVFX;
                 if (BBBNexus.SimpleObjectPoolSystem.Shared != null)
                 {
-                    var sp = BBBNexus.SimpleObjectPoolSystem.SpawnParams.Default;
-                    sp.Parent = _muzzle;
-                    sp.Position = _muzzle.position;
-                    sp.Rotation = _muzzle.rotation;
-                    sp.WorldPositionStays = true;
-                    muzzleVFX = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_akconfig.MuzzleVFXPrefab, in sp);
+                    muzzleVFX = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_akconfig.MuzzleVFXPrefab);
+                    muzzleVFX.transform.SetPositionAndRotation(_muzzle.position, _muzzle.rotation);
+                    muzzleVFX.transform.SetParent(_muzzle, true);
                 }
                 else
                 {
@@ -234,12 +241,9 @@ namespace BBBNexus
                 GameObject proj;
                 if (BBBNexus.SimpleObjectPoolSystem.Shared != null)
                 {
-                    var sp = BBBNexus.SimpleObjectPoolSystem.SpawnParams.Default;
-                    sp.Parent = null;
-                    sp.Position = _muzzle.position;
-                    sp.Rotation = _muzzle.rotation;
-                    sp.WorldPositionStays = true;
-                    proj = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_akconfig.ProjectilePrefab, in sp);
+                    proj = BBBNexus.SimpleObjectPoolSystem.Shared.Spawn(_akconfig.ProjectilePrefab);
+                    proj.transform.SetPositionAndRotation(_muzzle.position, _muzzle.rotation);
+                    proj.transform.SetParent(null, true);
                 }
                 else
                 {
@@ -276,6 +280,30 @@ namespace BBBNexus
                 _player.Config.Core.PitchLimits.x,
                 _player.Config.Core.PitchLimits.y
             );
+        }
+
+        public void OnSpawned()
+        {
+            // 保守复位（避免复用武器时残留）
+            _isEquipping = false;
+            _wasAiming = false;
+            _ikEnableScheduled = false;
+            _ikDisableScheduled = false;
+            _ikActive = false;
+            _lastFireTime = 0f;
+
+            if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            // 复用回来的枪不应残留对旧玩家的 IK 影响
+            ClearPlayerIKIfOwned();
+        }
+
+        public void OnDespawned()
+        {
+            if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            // 回收时确保清掉所有由本武器设置的 IK 引用
+            ClearPlayerIKIfOwned();
         }
     }
 }

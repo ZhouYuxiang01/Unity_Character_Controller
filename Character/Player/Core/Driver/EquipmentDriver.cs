@@ -33,20 +33,18 @@ namespace BBBNexus
                 _player?.NotifyEquipmentChanged();
                 return;
             }
+
             if (CurrentItemData.Prefab != null && _player != null && _player.WeaponContainer != null)
             {
                 var prefab = CurrentItemData.Prefab;
 
                 if (SimpleObjectPoolSystem.Shared != null)
                 {
-                    // 装备物品应始终在 WeaponContainer 的本地空间下对齐。
-                    // 使用 worldPositionStays=false，避免 SetParent(true) 导致层级/缩放异常影响角色显示。
-                    var sp = SimpleObjectPoolSystem.SpawnParams.Default;
-                    sp.Parent = _player.WeaponContainer;
-                    sp.Position = Vector3.zero;
-                    sp.Rotation = Quaternion.identity;
-                    sp.WorldPositionStays = false;
-                    _currentWeaponInstance = SimpleObjectPoolSystem.Shared.Spawn(prefab, in sp);
+                    _currentWeaponInstance = SimpleObjectPoolSystem.Shared.Spawn(prefab);
+                    // 调用者负责父子级：武器必须挂到 WeaponContainer
+                    _currentWeaponInstance.transform.SetParent(_player.WeaponContainer, false);
+                    _currentWeaponInstance.transform.localPosition = Vector3.zero;
+                    _currentWeaponInstance.transform.localRotation = Quaternion.identity;
                 }
                 else
                 {
@@ -65,10 +63,6 @@ namespace BBBNexus
                 {
                     Debug.LogWarning("生成的模型缺少控制接口 状态机将无法驱动该武器");
                 }
-                else
-                {
-                    CurrentItemDirector.OnEquipEnter(_player);
-                }
             }
             else
             {
@@ -80,10 +74,6 @@ namespace BBBNexus
         // 卸载当前物品销毁模型清理逻辑
         public void UnequipCurrentItem()
         {
-            if (CurrentItemDirector != null)
-            {
-                CurrentItemDirector.OnForceUnequip();
-            }
             if (_currentWeaponInstance != null)
             {
                 if (SimpleObjectPoolSystem.Shared != null)
@@ -96,7 +86,7 @@ namespace BBBNexus
                 }
                 _currentWeaponInstance = null;
             }
-            _player?.NotifyEquipmentChanged();
+            _player.NotifyEquipmentChanged();
             CurrentItemData = null;
             CurrentItemInstance = null;
             CurrentItemDirector = null;

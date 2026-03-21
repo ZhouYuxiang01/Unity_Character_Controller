@@ -35,36 +35,6 @@ MonoBehaviour:
   WalkStaminaRegenMult: 1.5
   StaminaRecoverThreshold: 0.2
   UpperBodyMask: {fileID: 31900000, guid: abc60a54908d3464ba7ff1de511c05fb, type: 2}
-  AttackAnim:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: NaN
   FacialMask: {fileID: 31900000, guid: ce85f1a061be48946845787c8df0d090, type: 2}
-  BlinkAnim:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: NaN
-  HurtFaceAnim:
-    _FadeDuration: 0.25
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: NaN
   FallHeightLevelThreshold: 1
   FallVerticalVelocityThreshold: -4
-  references:
-    version: 2
-    RefIds: []

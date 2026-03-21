@@ -4,7 +4,7 @@ using Animancer;
 namespace BBBNexus
 {
     // 剑：简化的持有与单段攻击逻辑
-    public class SwordBehaviour : MonoBehaviour, IHoldableItem
+    public class SwordBehaviour : MonoBehaviour, IHoldableItem, IPoolable
     {
         private enum SwordPhase { None, Equipping, Idle, Unequipping, Attacking }
 
@@ -34,6 +34,10 @@ namespace BBBNexus
         public void OnEquipEnter(PlayerController player)
         {
             _player = player;
+            _player.RuntimeData.WantsLeftHandIK = false;
+            _player.RuntimeData.LeftHandGoal = null;
+            _player.RuntimeData.WantsRightHandIK= false;
+            _player.RuntimeData.RightHandGoal = null;
             _phase = SwordPhase.Equipping;
             _equipEndTime = Time.time + (_config != null ? _config.EquipEndTime : 0f);
             _lastFireInput = false;
@@ -154,6 +158,21 @@ namespace BBBNexus
         {
             if (_player == null) return;
             if (_phase == SwordPhase.Attacking) _phase = SwordPhase.Idle;
+        }
+
+        public void OnSpawned()
+        {
+            _phase = SwordPhase.None;
+            _equipEndTime = 0f;
+            _unequipEndTime = 0f;
+            _lastFireInput = false;
+            _attackFallbackEndTime = 0f;
+        }
+
+        public void OnDespawned()
+        {
+            _phase = SwordPhase.None;
+            _lastFireInput = false;
         }
     }
 }

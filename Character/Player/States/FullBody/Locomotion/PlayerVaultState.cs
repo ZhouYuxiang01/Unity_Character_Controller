@@ -18,7 +18,7 @@ namespace BBBNexus
         // 进入状态 根据意图或高度选择翻越动画 初始化运动变形
         public override void Enter()
         {
-            Debug.Log("Entered Vault State");
+            //Debug.Log("Entered Vault State");
             _stateDuration = 0f;
             data.IsVaulting = true;
             _endTimeTriggered = false;

@@ -88,7 +88,7 @@ MonoBehaviour:
   DisableIKTime: 0.7
   ProjectilePrefab: {fileID: 5536105300875749745, guid: f7dc059e183f85e4782f92410569a3bf,
     type: 3}
-  ProjectileSpeed: 100
+  ProjectileSpeed: 20
   ShootInterval: 0.03
   ShootSound: {fileID: 8300000, guid: 664e484a1d17a95448f5f91bce733a63, type: 3}
   ProjectileHitSound: {fileID: 0}

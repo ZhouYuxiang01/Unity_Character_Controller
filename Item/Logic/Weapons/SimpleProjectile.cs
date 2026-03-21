@@ -1,137 +1,232 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-// 简单投射物 处理碰撞和销毁 支持特效音效爆炸和伤害
 namespace BBBNexus
 {
-    public class SimpleProjectile : MonoBehaviour
+    /// <summary>
+    /// 简单子弹（按当前项目约定重写）：
+    /// - 有生命时间：到点才回收自身
+    /// - 命中指定 Layer：播放击中特效
+    /// - 在配置范围内对 IDamageable 发送伤害请求（范围伤害）
+    /// - 支持对象池复用：实现 IPoolable，在 OnSpawned/OnDespawned 中复位
+    /// </summary>
+    public sealed class SimpleProjectile : MonoBehaviour, IPoolable
     {
-        [Header("Hit Effects")]
-        // 击中特效
+        [Header("Lifetime")]
+        [Min(0f)] public float lifeTime = 5f;
+
+        [Header("Hit")]
+        [Tooltip("哪些 Layer 的碰撞会被视为命中。")]
+        public LayerMask HitLayers = ~0;
+
+        [Tooltip("命中时播放的特效 Prefab（建议挂 PooledParticleAutoDespawn）。")]
         public GameObject hitVFXPrefab;
-        // 击中音效
+
+        [Tooltip("命中音效（可由武器在发射时注入）。")]
         public AudioClip hitSound;
 
-        [Header("Settings")]
-        // 存活时长
-        public float lifeTime = 5f;
+        [Header("Damage")]
+        [Tooltip("命中后在该半径内造成范围伤害。0 表示不造成伤害。")]
+        [Min(0f)]
+        public float DamageRadius = 0f;
 
-        // 命中是否爆炸
-        [Tooltip("命中时是否触发爆炸并对周围刚体施加冲击力")]
-        public bool ExplodeOnImpact = false;
-        [Tooltip("爆炸影响半径 米")]
-        public float ExplosionRadius = 5f;
-        [Tooltip("爆炸最大冲击力")]
-        public float ExplosionForce = 700f;
-        [Tooltip("爆炸向上修正 越大越向上")]
-        public float ExplosionUpwardsModifier = 0.0f;
-        [Tooltip("哪些层会受爆炸影响 LayerMask")]
-        public LayerMask ExplosionAffectLayers = ~0;
-
-        [Header("Damage Settings")]
-        // 命中是否造成范围伤害
-        [Tooltip("命中时是否对爆炸范围内的指定标签角色发送伤害请求")]
-        public bool DealDamageOnImpact = false;
-        [Tooltip("爆炸伤害量")]
+        [Tooltip("伤害值。")]
+        [Min(0f)]
         public float DamageAmount = 10f;
 
-        // 是否已命中
-        private bool _hasImpacted = false;
+        [Tooltip("哪些 Layer 的对象会被纳入伤害检测。")]
+        public LayerMask DamageLayers = ~0;
 
-        // 初始化 设置存活时长
-        private void Start()
+        [Tooltip("OverlapSphere 是否包含 Trigger。")]
+        public QueryTriggerInteraction DamageQueryTrigger = QueryTriggerInteraction.Collide;
+
+        [Header("Behavior")]
+        [Tooltip("命中后是否立即回收。若关闭，则子弹会继续飞行直到 lifeTime 到期。")]
+        public bool DespawnOnHit = true;
+
+        [Header("Debug")]
+        public bool debug;
+
+        private float _despawnAt;
+        private bool _hitProcessed;
+
+        private readonly HashSet<int> _damagedTargetIds = new HashSet<int>();
+
+        private bool UsePool => SimpleObjectPoolSystem.Shared != null;
+
+        #region Pool
+        public void OnSpawned()
         {
-            Destroy(gameObject, lifeTime);
+            _hitProcessed = false;
+            _despawnAt = lifeTime > 0f ? (Time.time + lifeTime) : 0f;
+
+            _damagedTargetIds.Clear();
+
+            // 复用兜底：确保 collider 打开
+            var cols = GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < cols.Length; i++)
+            {
+                if (cols[i] != null) cols[i].enabled = true;
+            }
+
+            // 清速度，避免复用继承（发射端会重新赋 velocity）
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
 
-        // 碰撞检测
+        public void OnDespawned()
+        {
+            _hitProcessed = false;
+            _despawnAt = 0f;
+
+            _damagedTargetIds.Clear();
+
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+        }
+        #endregion
+
+        private void OnEnable()
+        {
+            // 非池化场景兜底
+            if (_despawnAt <= 0f)
+                _despawnAt = lifeTime > 0f ? (Time.time + lifeTime) : 0f;
+        }
+
+        private void Update()
+        {
+            if (_despawnAt > 0f && Time.time >= _despawnAt)
+            {
+                DespawnSelf();
+            }
+        }
+
         private void OnCollisionEnter(Collision collision)
         {
-            if (_hasImpacted) return;
-            ContactPoint contact = collision.GetContact(0);
-            HandleImpact(contact.point, contact.normal, collision.collider);
+            HandleHit(collision.collider, collision.GetContact(0).point);
         }
 
-        // 触发器检测
         private void OnTriggerEnter(Collider other)
         {
-            if (_hasImpacted) return;
-            Vector3 contactPoint = other.ClosestPoint(transform.position);
-            Vector3 contactNormal = (transform.position - contactPoint).normalized;
-            if (contactNormal.sqrMagnitude < 1e-6f)
-            {
-                contactNormal = -transform.forward;
-            }
-            HandleImpact(contactPoint, contactNormal, other);
+            HandleHit(other, other.ClosestPoint(transform.position));
         }
 
-        // 处理命中逻辑
-        private void HandleImpact(Vector3 point, Vector3 normal, Collider other)
+        private void HandleHit(Collider other, Vector3 hitPoint)
         {
-            if (_hasImpacted) return;
-            _hasImpacted = true;
+            if (other == null) return;
+            if (_hitProcessed) return;
+
+            // 命中层过滤
+            if (((1 << other.gameObject.layer) & HitLayers.value) == 0)
+                return;
+
+            _hitProcessed = true;
+
+            if (debug)
+                Debug.Log($"[SimpleProjectile] Hit '{other.name}' layer={other.gameObject.layer} point={hitPoint}", other);
+
+            SpawnHitVFX(hitPoint, other);
+            ApplyAreaDamage(hitPoint);
+
+            if (DespawnOnHit)
+                DespawnSelf();
+        }
+
+        private void SpawnHitVFX(Vector3 hitPoint, Collider hitCollider)
+        {
             if (hitVFXPrefab != null)
             {
-                Instantiate(hitVFXPrefab, point, Quaternion.LookRotation(normal));
-            }
-            if (hitSound != null)
-            {
-                AudioSource.PlayClipAtPoint(hitSound, point);
-            }
-            if (ExplodeOnImpact)
-            {
-                ApplyExplosionPhysics(point);
-            }
-            if (DealDamageOnImpact && DamageAmount > 0f)
-            {
-                ApplyDamageToTargets(point);
-            }
-            else if (DamageAmount > 0f && other != null)
-            {
-                IDamageable directTarget = other.GetComponentInParent<IDamageable>();
-                if (directTarget != null)
+                var rot = Quaternion.LookRotation(-transform.forward, Vector3.up);
+
+                GameObject vfx;
+                if (SimpleObjectPoolSystem.Shared != null)
                 {
-                    var req = new DamageRequest(DamageAmount);
-                    directTarget.RequestDamage(in req);
+                    vfx = SimpleObjectPoolSystem.Shared.Spawn(hitVFXPrefab);
+                    vfx.transform.SetPositionAndRotation(hitPoint, rot);
+                }
+                else
+                {
+                    vfx = Instantiate(hitVFXPrefab, hitPoint, rot);
                 }
             }
-            Destroy(gameObject);
+
+            if (hitSound != null)
+                AudioSource.PlayClipAtPoint(hitSound, hitPoint);
         }
 
-        // 爆炸物理
-        private void ApplyExplosionPhysics(Vector3 explosionCenter)
+        private void ApplyAreaDamage(Vector3 center)
         {
-            Collider[] hits = Physics.OverlapSphere(explosionCenter, ExplosionRadius, ExplosionAffectLayers, QueryTriggerInteraction.Ignore);
-            if (hits == null || hits.Length == 0) return;
-            System.Collections.Generic.HashSet<Rigidbody> affected = new System.Collections.Generic.HashSet<Rigidbody>();
-            foreach (var col in hits)
-            {
-                if (col == null) continue;
-                Rigidbody rb = col.attachedRigidbody;
-                if (rb == null || rb.isKinematic) continue;
-                if (affected.Contains(rb)) continue;
-                rb.AddExplosionForce(ExplosionForce, explosionCenter, ExplosionRadius, ExplosionUpwardsModifier, ForceMode.Impulse);
-                affected.Add(rb);
-            }
-        }
+            if (DamageRadius <= 0f || DamageAmount <= 0f) return;
 
-        // 范围伤害
-        private void ApplyDamageToTargets(Vector3 explosionCenter)
-        {
-            Collider[] targetColliders = Physics.OverlapSphere(explosionCenter, ExplosionRadius);
-            if (targetColliders == null || targetColliders.Length == 0)
-                return;
-            System.Collections.Generic.HashSet<IDamageable> damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
-            foreach (var collider in targetColliders)
+            // 如果 DamageLayers 配成 Nothing(0)，则回退使用 HitLayers，避免“看起来命中了但伤害层为空”
+            var layers = DamageLayers.value != 0 ? DamageLayers : HitLayers;
+
+            var cols = Physics.OverlapSphere(center, DamageRadius, layers, DamageQueryTrigger);
+            if (cols == null || cols.Length == 0) return;
+
+            _damagedTargetIds.Clear();
+
+            var hitCount = 0;
+            var req = new DamageRequest(DamageAmount);
+
+            for (int i = 0; i < cols.Length; i++)
             {
-                if (collider == null) continue;
-                IDamageable damageable = collider.GetComponentInParent<IDamageable>();
-                if (damageable == null) continue;
-                if (damagedTargets.Contains(damageable))
+                var c = cols[i];
+                if (c == null) continue;
+
+                IDamageable d = FindDamageable(c);
+                if (d == null) continue;
+
+                int id = (d as Component) != null ? ((Component)d).GetInstanceID() : d.GetHashCode();
+                if (!_damagedTargetIds.Add(id))
                     continue;
-                var damageRequest = new DamageRequest(DamageAmount);
-                damageable.RequestDamage(in damageRequest);
-                damagedTargets.Add(damageable);
+
+                d.RequestDamage(in req);
+                hitCount++;
+
+                if (debug)
+                    Debug.Log($"[SimpleProjectile] Damage -> {d.GetType().Name} ({id})", (d as Component));
             }
+
+            if (debug)
+                Debug.Log($"[SimpleProjectile] AreaDamage radius={DamageRadius} amount={DamageAmount} targets={hitCount}");
+        }
+
+        private static IDamageable FindDamageable(Collider col)
+        {
+            if (col == null) return null;
+
+            // 1) collider 层级
+            var d = col.GetComponentInParent<IDamageable>();
+            if (d != null) return d;
+
+            // 2) 刚体根（常见：刚体在根，collider 在子)
+            var rb = col.attachedRigidbody;
+            if (rb != null)
+            {
+                d = rb.GetComponentInParent<IDamageable>();
+                if (d != null) return d;
+            }
+
+            // 3) 根节点
+            var root = col.transform.root;
+            return root != null ? root.GetComponent<IDamageable>() : null;
+        }
+
+        private void DespawnSelf()
+        {
+            if (UsePool)
+                SimpleObjectPoolSystem.Shared.Despawn(gameObject);
+            else
+                Destroy(gameObject);
         }
     }
 }
