@@ -167,15 +167,9 @@ namespace BBBNexus
         {
             if (_player == null || _player.RuntimeData == null) return;
 
-            // 只在“当前引用确实指向本武器资源”时才清，避免误伤其它武器。
-            if (_player.RuntimeData.LeftHandGoal == _leftHandGoal)
-                _player.RuntimeData.LeftHandGoal = null;
-
+            _player.RuntimeData.LeftHandGoal = null;
             _player.RuntimeData.WantsLeftHandIK = false;
-
-            if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                _player.RuntimeData.CurrentAimReference = null;
-
+            _player.RuntimeData.CurrentAimReference = null;
             _player.RuntimeData.WantsLookAtIK = false;
         }
 
@@ -294,16 +288,12 @@ namespace BBBNexus
 
             if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
-            // 复用回来的枪不应残留对旧玩家的 IK 影响
-            ClearPlayerIKIfOwned();
         }
 
         public void OnDespawned()
         {
             if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
-            // 回收时确保清掉所有由本武器设置的 IK 引用
-            ClearPlayerIKIfOwned();
         }
     }
 }

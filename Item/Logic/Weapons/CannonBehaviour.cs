@@ -169,14 +169,9 @@ namespace BBBNexus
         {
             if (_player == null || _player.RuntimeData == null) return;
 
-            if (_player.RuntimeData.LeftHandGoal == _leftHandGoal)
-                _player.RuntimeData.LeftHandGoal = null;
-
+            _player.RuntimeData.LeftHandGoal = null;
             _player.RuntimeData.WantsLeftHandIK = false;
-
-            if (_player.RuntimeData.CurrentAimReference == _muzzle)
-                _player.RuntimeData.CurrentAimReference = null;
-
+            _player.RuntimeData.CurrentAimReference = null;
             _player.RuntimeData.WantsLookAtIK = false;
         }
 
@@ -217,14 +212,11 @@ namespace BBBNexus
             _lastFireTime = 0f;
 
             if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-
-            ClearPlayerIKIfOwned();
         }
 
         public void OnDespawned()
         {
             if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            ClearPlayerIKIfOwned();
         }
 
         // ¼ì²éÀäÈ´²¢¿ª»ð

@@ -16,8 +16,6 @@ namespace BBBNexus
         // 进入状态：根据当前运动档位选择对应混合树
         public override void Enter()
         {
-            data.WantsLookAtIK = true;
-
             _lastTreeState = LocomotionState.Idle;
             SwitchTreeIfNeeded(force: true);
 

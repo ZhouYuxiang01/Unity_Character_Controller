@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AIConfig_Main
   m_EditorClassIdentifier: 
   Brain: {fileID: 11400000, guid: 4dcf08eb42967ae4da2c9a0f70aff752, type: 2}
-  Core: {fileID: 11400000, guid: 1d0185795949099469b978e24671a4b6, type: 2}
+  Core: {fileID: 11400000, guid: c307721f62a50e5439c61a0bc16e61a1, type: 2}
   LocomotionAnims: {fileID: 11400000, guid: d21cb38821cc2a94e8837fc25cd83a2c, type: 2}
   JumpAndLanding: {fileID: 11400000, guid: 93d48c623044a584e8d188e363434754, type: 2}
   Aiming: {fileID: 11400000, guid: 351fde2810c00284ea1a1fb145d84352, type: 2}

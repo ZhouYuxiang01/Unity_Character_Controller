@@ -164,8 +164,8 @@ namespace BBBNexus
                     }
 
                     float halfSpread = _config.Vaulting.VaultHandSpread * 0.5f;
-                    info.LeftHandPos = ledgeEdge - rightDir * halfSpread;
-                    info.RightHandPos = ledgeEdge + rightDir * halfSpread;
+                    info.LeftHandPos = ledgeEdge + rightDir * halfSpread;
+                    info.RightHandPos = ledgeEdge - rightDir * halfSpread;
                     info.HandRot = Quaternion.LookRotation(-wallNormalFlat.normalized, Vector3.up);
 
                     return true;

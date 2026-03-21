@@ -85,7 +85,7 @@ namespace BBBNexus
             }
         }
 
-        // 运行时更新权重 负责控制各个肢体修正的混合程度
+        // 运行时更新目标权重 负责控制各个肢体修正的混合程度
         public override void UpdateIKWeight(IKTarget target, float weight)
         {
             switch (target)

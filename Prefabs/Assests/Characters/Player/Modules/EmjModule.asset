@@ -21,47 +21,7 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 7400000, guid: 23511b38237ba034bbd2b0138f3834fe, type: 2}
     _NormalizedStartTime: NaN
-  _entries:
-  - Event: 2
-    Transition:
-      _FadeDuration: 0
-      _Speed: 0
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: 7400000, guid: efec564a6d50a6e41921a6abfff4bcca, type: 2}
-      _NormalizedStartTime: 0
-  - Event: 1
-    Transition:
-      _FadeDuration: 0
-      _Speed: 0
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: 7400000, guid: bbf193b2823179a4e816818a3fcb8f9e, type: 2}
-      _NormalizedStartTime: 0
-  - Event: 3
-    Transition:
-      _FadeDuration: 0
-      _Speed: 0
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: 7400000, guid: 3c62161a0b87dcf4eb28301416a2e96f, type: 2}
-      _NormalizedStartTime: 0
-  - Event: 5
-    Transition:
-      _FadeDuration: 0
-      _Speed: 0
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: 7400000, guid: cc5a99f7e7d28d748a1ebed0e07c3243, type: 2}
-      _NormalizedStartTime: 0
+  _entries: []
   references:
     version: 2
     RefIds: []
