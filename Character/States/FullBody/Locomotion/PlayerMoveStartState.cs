@@ -7,7 +7,6 @@ namespace BBBNexus
     // 动画结束后切换到循环移动状态 
     public class PlayerMoveStartState : PlayerBaseState
     {
-        private float _stateDuration;
         private MotionClipData _currentClipData;
         private LocomotionState _startLocomotionState;
 
@@ -19,7 +18,6 @@ namespace BBBNexus
         // 进入状态 选择对应方向的起步动画并注册结束回调
         public override void Enter()
         {
-            _stateDuration = 0f;
             _startLocomotionState = data.CurrentLocomotionState;
 
             // 根据当前运动状态和移动方向选择起步动画

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace BBBNexus
 {
     /// <summary>
-    /// 上半身状态注册表：根据 BrainSO 的枚举配置，映射并创建对应的状态实例。
+    /// 上半身状态注册表：根据 BrainSO 的枚举配置 映射并创建对应的状态实例
     /// </summary>
     public class UpperBodyStateRegistry
     {

@@ -8,7 +8,7 @@ namespace BBBNexus
         [Header("AI Modules")]
         public NavigatorSensorBase _navigatorSensor;
 
-        // 【核心黑魔法】：多态序列化纯 C# 接口！
+        // 多态序列化纯 C# 接口
         [SubclassSelector]
         [SerializeReference]
         public IAITacticalBrain _brain;
@@ -38,10 +38,9 @@ namespace BBBNexus
                 return;
             }
 
-            // 【依赖注入】：纯 C# 类不知道自己长在哪，必须由挂载点把 Transform 喂给它！
+            // 纯 C# 类不知道自己长在哪 必须由挂载点把 Transform 喂给它
             _brain.Initialize(this.transform, TacticalConfig);
 
-            // 注入配置 - 如果 brain 是 MeleeRusherBrain，会使用这个配置
             if (TacticalConfig != null)
                 InjectConfigIfSupported(_brain, TacticalConfig);
         }

@@ -8,10 +8,9 @@ namespace BBBNexus
     /// 整个BBBNexus系统的 Root 节点唯一的 Monobehaviour 驱动源 
     /// 不包含任何具体游戏逻辑 仅负责组件整合、内存分配与严格的时序指令分发 
     /// 
-    /// Pooling note:
-    /// - Awake: 只做一次性分配/依赖注入（对象池复用时不会重复调用）。
-    /// - OnSpawned: 每次从池取出时做“帧状态复位 + 轻量重启”。
-    /// - OnDespawned: 每次回收时做“回调/引用清理”，避免引用悬挂。
+    /// - Awake: 只做一次性分配/依赖注入（对象池复用时不会重复调用）
+    /// - OnSpawned: 每次从池取出时做“帧状态复位 + 重启”
+    /// - OnDespawned: 每次回收时做“回调/引用清理”
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(AnimancerComponent))]
@@ -30,7 +29,7 @@ namespace BBBNexus
         public PlayerIKSourceBase IKSource;
         [Tooltip("用于播放角色音效的 AudioSource 建议关闭 Loop")]
         public AudioSource SfxSource;
-        [Tooltip("aniamncercomponet也记得要引用角色animator")]
+        [Tooltip("注意: aniamncercomponet也记得要引用角色animator")]
         public Animator animator;
 
         [Header("--- 核心配置 ---")]
@@ -91,7 +90,7 @@ namespace BBBNexus
 
         private bool _booted;
 
-        // Awake 负责内存分配、找组件、依赖注入。所有初始化都在这里完成。
+        // Awake 负责内存分配、找组件、依赖注入 
         private void Awake()
         {
             animator = GetComponent<Animator>();
@@ -143,11 +142,11 @@ namespace BBBNexus
 
             Animancer.Animator.applyRootMotion = false;
 
-            // 1. 实例化纯数据容器
+            // 实例化纯数据容器
             RuntimeData = new PlayerRuntimeData(this);
             InputData = new InputData();
 
-            // 2. 实例化所有系统控制器与驱动器 
+            // 实例化所有系统控制器与驱动器 
             StateMachine = new StateMachine();
             InterruptProcessor = new GlobalInterruptProcessor(this);
             MotionDriver = new MotionDriver(this);
@@ -157,15 +156,14 @@ namespace BBBNexus
             // 音频驱动器：如果没配 AudioSource 或模块，则 driver 仍可存在但会静默忽略播放请求。
             AudioDriver = new AudioDriver(transform, SfxSource, Config != null ? Config.Audio : null);
 
-            // 2.5 实例化仲裁管线
+            // 实例化仲裁管线
             ArbiterPipeline = new ArbiterPipeline(this);
 
-            // 3. 建立双管线并注入依赖 (直接传递 InputSourceRef)
-            // InputPipeline 构造函数已更改为只接受 InputSourceBase，所有 timing 配置从 InputSourceRef 注入
+            // 建立管线并注入依赖
             InputPipeline = new InputPipeline(InputSourceRef);
             MainProcessorPipeline = new MainProcessorPipeline(this, InputPipeline);
 
-            // 4. 实例化子分层控制器
+            // 实例化子分层控制器
             InventoryController = new PlayerInventoryController(this);
             UpperBodyCtrl = new UpperBodyController(this);
             _facialController = new FacialController(this);
@@ -173,7 +171,7 @@ namespace BBBNexus
             ActionController = new ActionController(this);
             AudioController = new AudioController(this);
 
-            // 5. 装载状态字典 分配独立内存实例
+            // 装载状态字典 分配独立内存实例
             StateRegistry = new PlayerStateRegistry();
             if (Config != null && Config.Brain != null)
             {
@@ -205,20 +203,18 @@ namespace BBBNexus
 
         public void OnSpawned()
         {
-            // 对象池出池：确保启用状态下具备可运行的初始状态。
-            // 这里不做 new（避免反复分配），只做“轻量重启/复位”。
+            // 对象池出池：确保启用状态下具备可运行的初始状态
 
-            // 如果走对象池，Start 可能不会再次调用，确保 boot。
             BootIfNeeded();
 
             // 复位帧级意图，防止复用时继承上一轮输入/仲裁结果。
-            RuntimeData?.ResetIntetnt();
+            RuntimeData.ResetIntetnt();
 
-            // 恢复 root motion 受控状态（某些 full-body override 可能改过它）。
+            // 恢复 root motion 受控状态（某些 full-body override 可能改过它）
             if (Animancer != null && Animancer.Animator != null)
                 Animancer.Animator.applyRootMotion = false;
 
-            // 清理 IK 残留（目标可能在上次武器上）。
+            // 清理 IK 残留（目标可能在上次武器上）
             if (RuntimeData != null)
             {
                 RuntimeData.CurrentAimReference = null;
@@ -229,8 +225,8 @@ namespace BBBNexus
                 RuntimeData.WantsRightHandIK = false;
             }
 
-            // 确保 ArbiterPipeline 本帧不会读到旧请求（例如 ActionOverride）。
-            // ActionArbitration/Override 结构若是 struct，直接归零即可。
+            // 确保 ArbiterPipeline 本帧不会读到旧请求（例如 ActionOverride）
+            // ActionArbitration/Override 结构若是 struct 直接归零
             if (RuntimeData != null)
             {
                 RuntimeData.Override.IsActive = false;
@@ -239,15 +235,15 @@ namespace BBBNexus
 
         public void OnDespawned()
         {
-            // 对象池回收：解除潜在引用，防止 callback/IK/装备对象继续持有该 PlayerController。
+            // 对象池回收：解除潜在引用 防止 callback/IK/装备对象继续持有该 PlayerController
 
-            // 清空动画层回调，避免失活后仍触发逻辑。
+            // 清空动画层回调 避免失活后仍触发逻辑
             AnimFacade?.ClearOverrideOnEndCallback();
             AnimFacade?.ClearOnEndCallback(0);
             AnimFacade?.ClearOnEndCallback(1);
             AnimFacade?.ClearOnEndCallback(2);
 
-            // 让当前武器有机会停特效/解绑。
+            // 让当前武器有机会停特效/解绑
             try { EquipmentDriver?.UnequipCurrentItem(); } catch { }
 
             if (RuntimeData != null)
@@ -262,7 +258,7 @@ namespace BBBNexus
 
         private void OnEnable()
         {
-            // 对象池激活时 Start 不一定每次都会走（取决于场景/脚本执行顺序），这里兜底。
+            // 对象池激活时 Start 不一定每次都会走（取决于场景/脚本执行顺序） 这里作为兜底
             if (Application.isPlaying)
                 BootIfNeeded();
         }
@@ -270,7 +266,7 @@ namespace BBBNexus
         // 逻辑与意图更新 (在动画引擎运算之前)
         private void Update()
         {
-            if (!_booted) return; // pooling safety
+            if (!_booted) return; 
 
             //Debug.Log(Animancer.Layers.Count);
 
@@ -334,10 +330,9 @@ namespace BBBNexus
 
         public void RequestOverride(in ActionRequest request, bool flushImmediately = true)
         {
-            // 不再直接调用 ActionArbiter 的外部方法；统一写入黑板，仲裁器只读。
             RuntimeData.ActionArbitration.Submit(in request);
 
-            // 兼容旧调用点：如果要求立即刷新，则直接跑一次仲裁。
+            // 如果要求立即刷新 则直接跑一次仲裁(一般情况下不用 如果有严格同步需求才请求)
             if (flushImmediately)
                 ArbiterPipeline?.Action?.Arbitrate();
         }

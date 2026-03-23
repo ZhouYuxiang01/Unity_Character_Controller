@@ -12,7 +12,7 @@ namespace BBBNexus
         public PlayerBaseState InitialState { get; private set; }
 
         /// <summary>
-        /// 核心工厂方法：根据枚举名单，硬编码实例化状态并注入依赖
+        /// 核心工厂方法：根据枚举名单 实例化状态并注入依赖
         /// </summary>
         public void InitializeFromBrain(PlayerBrainSO brain, PlayerController player)
         {

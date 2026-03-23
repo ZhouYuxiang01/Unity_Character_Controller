@@ -32,9 +32,8 @@ namespace BBBNexus
         public bool BlockFacial;
         public bool BlockIK;
         public bool BlockInventory;
+        public bool BlockAudio;
         public bool IsDead;
-
-        // 预留：Action 系统仲裁标记（未来可用于禁用/排队某些动作意图）
         public bool BlockAction;
 
         public void Clear()
@@ -44,14 +43,15 @@ namespace BBBNexus
             BlockFacial = false;
             BlockIK = false;
             BlockInventory = false;
+            BlockAudio = false;
             IsDead = false;
             BlockAction = false;
         }
     }
 
     /// <summary>
-    /// 动作仲裁请求（帧级）：由各系统写入，ActionArbiter 只读取并应用。
-    /// 规则：同一帧内仅保留 Priority 最高的请求。
+    /// 动作仲裁请求（帧级）：由各系统写入 ActionArbiter 只读取并应用 
+    /// 规则：同一帧内仅保留 Priority 最高的请求 
     /// </summary>
     public struct ActionArbitrationContext
     {
@@ -159,7 +159,7 @@ namespace BBBNexus
     #region Movement & Direction Enums
 
     /// <summary>
-    /// 离散化的角色意图方向（8方向）。
+    /// 离散化的角色意图方向（8方向） 
     /// 这是将连续的摇杆输入量化成8个离散方向 用于选择对应的启动动画与根运动方向
     /// </summary>
     public enum DesiredDirection

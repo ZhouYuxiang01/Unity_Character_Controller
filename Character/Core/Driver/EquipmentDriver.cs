@@ -5,7 +5,6 @@ namespace BBBNexus
     // 装备驱动器 负责生成模型注入数据驱动逻辑
     public class EquipmentDriver
     {
-        // 玩家引用
         private readonly PlayerController _player;
         // 当前物品配置
         public EquippableItemSO CurrentItemData { get; private set; }
@@ -41,7 +40,6 @@ namespace BBBNexus
                 if (SimpleObjectPoolSystem.Shared != null)
                 {
                     _currentWeaponInstance = SimpleObjectPoolSystem.Shared.Spawn(prefab);
-                    // 调用者负责父子级：武器必须挂到 WeaponContainer
                     _currentWeaponInstance.transform.SetParent(_player.WeaponContainer, false);
                     _currentWeaponInstance.transform.localPosition = Vector3.zero;
                     _currentWeaponInstance.transform.localRotation = Quaternion.identity;
@@ -51,12 +49,12 @@ namespace BBBNexus
                     _currentWeaponInstance = Object.Instantiate(prefab, _player.WeaponContainer);
                 }
 
-                // 关键：复用对象必须重置 localScale，避免上一次使用遗留缩放导致异常（甚至把角色一起缩没）。
+                // 复用对象必须重置 localScale，避免上一次使用遗留缩放导致异常（甚至把角色一起缩没）
                 _currentWeaponInstance.transform.localScale = Vector3.one;
 
                 _currentWeaponInstance.transform.localPosition = CurrentItemData.HoldPositionOffset;
                 _currentWeaponInstance.transform.localRotation = CurrentItemData.HoldRotationOffset;
-                if (_currentWeaponInstance.transform.localScale != Vector3.one) Debug.LogWarning("检测到预制件缩放异常 建议检查离线配置");
+                if (_currentWeaponInstance.transform.localScale != Vector3.one) Debug.LogWarning("检测到预制件缩放异常 建议检查prefab配置");
                 CurrentItemDirector = _currentWeaponInstance.GetComponent<IHoldableItem>();
                 CurrentItemDirector?.Initialize(CurrentItemInstance);
                 if (CurrentItemDirector == null)
@@ -97,37 +95,32 @@ namespace BBBNexus
             CurrentItemDirector = null;
         }
 
-        /// <summary>
-        /// 清理运行时黑板上的所有 IK 引用与意图
-        /// 这个方法由两部分组成：
-        /// 1. 主清理逻辑：清理所有IK相关的黑板数据
-        /// 2. 防御性检查：防止武器清理不彻底导致的悬空引用
-        /// 
-        /// 为什么需要两层清理？
-        /// - 对象池失活时，Despawn() 在 ClearAllIKReferencesFromRuntimeData() 之前执行
-        /// - 武器的 OnForceUnequip() 也可能有漏洞或异常
-        /// - IKController 的 SanitizeAimReference() 是最后的兜底，但在 Update 中才触发
-        /// 
-        /// 职责明确：EquipmentDriver 在物品销毁时负责彻底清理黑板
-        /// </summary>
+        // 清理运行时黑板上的所有 IK 引用与意图
+        // 这个方法由两部分组成：
+        // 1. 主清理逻辑：清理所有IK相关的黑板数据
+        // 2. 防御性检查：防止武器清理不彻底导致的悬空引用
+        // 
+        // 为什么需要两层清理？
+        // 对象池失活时，Despawn() 在 ClearAllIKReferencesFromRuntimeData() 之前执行
+        // 武器的 OnForceUnequip() 也可能有漏洞或异常
+        // IKController 的 SanitizeAimReference() 是最后的兜底，但在 Update 中才触发
+        // 
+        // 以及 unity疑似重载了"==" 即使对象失活了 ik系统可能还会继续持有引用
+        //
+        // 职责明确：EquipmentDriver 在物品销毁时负责彻底清理黑板
         private void ClearAllIKReferencesFromRuntimeData()
         {
             if (_player?.RuntimeData == null) return;
 
-            // 左手 IK：由具体武器负责清理，但我们在此做兜底清理
             _player.RuntimeData.WantsLeftHandIK = false;
             _player.RuntimeData.LeftHandGoal = null;
 
-            // 右手 IK：当前未使用，但为了完整性也清理
             _player.RuntimeData.WantsRightHandIK = false;
             _player.RuntimeData.RightHandGoal = null;
 
-            // 瞄准 IK：关键！防止指向已失活的 muzzle（对象池失活的Transform）
-            // 由武器在 OnUpdateLogic 中动态设置，需要彻底清理
             _player.RuntimeData.WantsLookAtIK = false;
             _player.RuntimeData.CurrentAimReference = null;
 
-            // 头部注视点：清理相关意图
             _player.RuntimeData.LookAtPosition = Vector3.zero;
         }
     }

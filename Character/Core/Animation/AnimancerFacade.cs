@@ -13,14 +13,13 @@ namespace BBBNexus
 
         // 多层回调字典 这是为了解决多层级动作串线
         // 每个动画层都有自己的独立回调槽位 互不干扰 
-        // 别随便改这里的逻辑 不然换弹动作可能会卡在最后一帧 
         private Dictionary<int, Action> _layerOnEndActions = new Dictionary<int, Action>();
 
         // 回调包装类的对象池 避免闭包GC
         private Stack<CallbackWrapper> _wrapperPool = new Stack<CallbackWrapper>();
 
-        // GC FIX: OnDisable 原实现 `new List<int>(_layerOnEndActions.Keys)` 会分配新 List 和内部数组。
-        // 这里使用静态 scratch list 复用避免禁用/销毁时产生 GC 尖刺。
+        // 注: OnDisable 原实现 new List<int>(_layerOnEndActions.Keys) 会分配新 List 和内部数组
+        // 这里使用静态 scratch list 复用避免禁用/销毁时产生 GC 
         private static readonly List<int> _layerKeyScratch = new List<int>(8);
 
         /// <summary>
@@ -36,7 +35,7 @@ namespace BBBNexus
             public Action OnEndAction;
             public AnimancerFacade Facade;
             
-            // 将实例方法缓存为委托，彻底消灭 new Action() 的隐藏GC
+            // 将实例方法缓存为委托 消灭 new Action() 的隐藏GC
             public readonly Action DelegateInstance;
 
             public CallbackWrapper()
@@ -54,7 +53,7 @@ namespace BBBNexus
                 Facade._layerOnEndActions.Remove(LayerIndex);
                 try { OnEndAction?.Invoke(); } catch { }
                 
-                // 执行完毕后，清空引用防止内存泄漏，并把自己压回池中复用
+                // 执行完毕后 清空引用防止内存泄漏 并把自己压回池中复用
                 State = null;
                 OnEndAction = null;
                 Facade._wrapperPool.Push(this);
@@ -74,7 +73,7 @@ namespace BBBNexus
 
         private void EnsureAnimancer()
         {
-            // 对象池预热/启用早期：可能在 Awake 之前就有逻辑调用到 Facade（例如状态机 Boot）。
+            // 对象池预热/启用早期：可能在 Awake 之前就有逻辑调用到 Facade（例如状态机 Boot）
             // 这里做懒初始化避免 NullReference。
             if (_animancer == null)
                 _animancer = GetComponent<AnimancerComponent>();
@@ -87,8 +86,7 @@ namespace BBBNexus
             if (_layerOnEndActions.Count > 0)
             {
 #if UNITY_EDITOR
-                // GC RISK NOTE: 这里不能 new List(keys)，否则会产生托管分配。
-                // Debug.Log("[GC-RISK FIXED] AnimancerFacade.OnDisable: reused scratch list instead of allocating new List<int>.");
+                // 注: 这里不能 new List(keys) 否则会产生托管分配
 #endif
                 _layerKeyScratch.Clear();
                 foreach (var kv in _layerOnEndActions)
@@ -198,7 +196,7 @@ namespace BBBNexus
 
         public override void SetOverrideOnEndCallback(Action onEndAction)
         {
-            // 接管模式的回调通道绑定到 layer0 当前 state。
+            // 接管模式的回调通道绑定到 layer0 当前 state
             var state = GetLayerOrFallback(0).CurrentState;
 
             if (onEndAction == null)
@@ -207,7 +205,7 @@ namespace BBBNexus
                 return;
             }
 
-            // 先清掉旧的绑定（仅影响 override 通道自身）。
+            // 先清掉旧的绑定（仅影响 override 通道自身）
             ClearOverrideOnEndCallback();
 
             CallbackWrapper wrapper = _wrapperPool.Count > 0 ? _wrapperPool.Pop() : new CallbackWrapper();
@@ -239,7 +237,7 @@ namespace BBBNexus
                 catch { }
             }
 
-            // 手动回收到池（不走 Execute，因为 Execute 会尝试操作 _layerOnEndActions[-1]）
+            // 手动回收到池（注: 不走 Execute 因为 Execute 会尝试操作 _layerOnEndActions[-1]）
             _overrideCallbackWrapper.State = null;
             _overrideCallbackWrapper.OnEndAction = null;
             _wrapperPool.Push(_overrideCallbackWrapper);

@@ -5,29 +5,24 @@ using UnityEngine;
 namespace BBBNexus
 {
     // 物品栏管理器
-    // 管理主背包与快捷栏，现在它是一个纯粹的业务执行者，只监视黑板意图
     public class PlayerInventoryController
     {
         private PlayerController _player;
-        private PlayerRuntimeData _data; // 缓存黑板引用
+        private PlayerRuntimeData _data; 
 
-        // 主背包 容量20 存储非快捷装备的物品
         public InventorySystem MainInventory { get; private set; }
-        // 快捷栏 容量5 与数字键1-5直接对应 这5个槽位的切换由此类管理
         public InventorySystem HotbarInventory { get; private set; }
 
-        // 缓存当前快捷栏选中的槽位 用于判断重复按键时的卸载动作
         private int _currentSlotIndex = -1;
 
         public PlayerInventoryController(PlayerController player)
         {
             _player = player;
-            _data = player.RuntimeData; // 拿到黑板
+            _data = player.RuntimeData; 
             MainInventory = new InventorySystem(20);
             HotbarInventory = new InventorySystem(5);
         }
 
-        // 在 PlayerController.Start 时调用
         public void Initialize()
         {
             if (_player != null)
@@ -43,18 +38,15 @@ namespace BBBNexus
             _player = null;
         }
 
-        // 【核心重构】：每帧由 PlayerController 调用（必须在意图管线 Update 之后）
         public void Update()
         {
             if (_data == null) return;
             if (_data.Arbitration.BlockInventory) return;
 
-            // 监视黑板：是否有切换快捷栏的意图？
             if (_data.WantsToEquipHotbarIndex != -1)
             {
                 TryEquipSlot(_data.WantsToEquipHotbarIndex);
 
-                // 【消费意图】：执行完毕后，将黑板上的意图抹除！
                 _data.WantsToEquipHotbarIndex = -1;
             }
         }
@@ -108,7 +100,6 @@ namespace BBBNexus
             if (_player == null) return;
             if (slotIndex < 0 || slotIndex >= 5) return;
 
-            // 重复按下当前槽位 作为快速卸载的开关
             if (_currentSlotIndex == slotIndex)
             {
                 Unequip();
@@ -123,8 +114,6 @@ namespace BBBNexus
             {
                 //Debug.Log($"[Inventory] 槽位 {slotIndex + 1} 为空 -> 卸载");
                 Unequip();
-
-                // 消费对应的数字键输入
                 ConsumeHotbarKey(slotIndex);
                 return;
             }

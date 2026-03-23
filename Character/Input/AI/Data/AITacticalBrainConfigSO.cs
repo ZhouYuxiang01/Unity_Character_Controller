@@ -2,20 +2,16 @@ using UnityEngine;
 
 namespace BBBNexus
 {
-    /// <summary>
-    /// AI 战术大脑配置 - 存储所有 AI 行为的自定义参数
-    /// 通过 ScriptableObject 在 Inspector 中直接编辑，无需修改代码
-    /// </summary>
     [CreateAssetMenu(fileName = "AITacticalConfig_", menuName = "BBBNexus/AI/Tactical Brain Config")]
     public class AITacticalBrainConfigSO : ScriptableObject
     {
         [Header("--- 距离与目标 ---")]
-        [SerializeField] public float EngagementRange = 15f;      // 发现敌人的距离
-        [SerializeField] public float AttackRange = 2f;           // 进入近战的距离
+        [SerializeField] public float EngagementRange = 15f;
+        [SerializeField] public float AttackRange = 2f;          
 
         [Header("--- 跳跃配置 ---")]
-        [SerializeField] public float JumpCooldown = 1.5f;        // 跳跃冷却时间（秒）
-        [SerializeField] public float DoubleJumpDelay = 0.35f;    // 二段跳延迟（秒）
+        [SerializeField] public float JumpCooldown = 1.5f;
+        [SerializeField] public float DoubleJumpDelay = 0.35f;
 
         [Header("--- 闪避配置 (Dodge) ---")]
         [Tooltip("触发闪避的最近距离（米）")]

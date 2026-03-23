@@ -1,6 +1,4 @@
 using UnityEngine;
-
-// [原样保留]
 public enum IKTarget
 {
     LeftHand,
@@ -33,17 +31,17 @@ namespace BBBNexus
         void SetIKTarget(IKTarget target, Vector3 position, Quaternion rotation, float weight);
 
         /// <summary>
-        /// 仅更新指定 IK 目标的权重。
+        /// 仅更新指定 IK 目标的权重 
         /// </summary>
         void UpdateIKWeight(IKTarget target, float weight);
 
         /// <summary>
-        /// 一键开启所有底层 IK 组件。用于从低 LOD 恢复到高 LOD 时唤醒解算器。
+        /// 一键开启所有底层 IK 组件 用于从低 LOD 恢复到高 LOD 时唤醒解算器 
         /// </summary>
         void EnableAllIK();
 
         /// <summary>
-        /// 一键关闭所有底层 IK 组件。用于在低 LOD 下彻底瘫痪解算器以节省 CPU 开销。
+        /// 一键关闭所有底层 IK 组件 用于在低 LOD 下彻底瘫痪解算器以节省 CPU 开销 
         /// </summary>
         void DisableAllIK();
     }

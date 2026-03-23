@@ -23,12 +23,12 @@ namespace BBBNexus
             EnsureAimTargetProxy();
             EnsureAimPivotFallback();
 
-            // 在 Prefab/场景里先绑定一次，避免运行时 inspector 一直显示 None
+            // 在 Prefab/场景里先绑定一次 避免运行时 inspector 一直显示 None
             if (_aimIK != null)
             {
                 if (_aimIK.solver.target == null) _aimIK.solver.target = _aimTargetProxy;
 
-                // 关键：AimIK 运行时 solver.transform 不能为空，否则 FinalIK 内部会 NRE（IKSolverAim.GetAngle 等处）
+                // 关键：AimIK 运行时 solver.transform 不能为空 否则 FinalIK 内部会 NRE（IKSolverAim.GetAngle 等处）
                 if (_aimIK.solver.transform == null) _aimIK.solver.transform = _aimPivotFallback;
             }
         }
@@ -37,7 +37,6 @@ namespace BBBNexus
         {
             if (_aimTargetProxy != null) return;
 
-            // 创建一个稳定的 Transform，永远不 Destroy，不跟武器走
             var go = new GameObject("AimTarget_Proxy");
             go.transform.SetParent(transform, false);
             go.transform.localPosition = Vector3.forward * 5f;
@@ -49,7 +48,6 @@ namespace BBBNexus
         {
             if (_aimPivotFallback != null) return;
 
-            // 默认兜底：使用本物体 transform（通常挂在角色IK根/角色身上，总是有效）
             _aimPivotFallback = transform;
         }
 
@@ -61,7 +59,7 @@ namespace BBBNexus
                 case IKTarget.LeftHand:
                     if (_fbbik != null)
                     {
-                        // FinalIK 更推荐使用 effector.target（可同时驱动位置/旋转），避免只写 position 导致旋转/后处理脚本不生效。
+                        // 注: FinalIK 更推荐使用 effector.target（可同时驱动位置/旋转） 避免只写 position 导致旋转/后处理脚本不生效 
                         _fbbik.solver.leftHandEffector.target = targetTransform;
                         if (targetTransform != null)
                         {
@@ -76,7 +74,6 @@ namespace BBBNexus
                 case IKTarget.RightHand:
                     if (_fbbik != null)
                     {
-                        // 修复：这里原本错误地写成了 leftHandEffector.position，导致右手目标更新时覆盖左手。
                         _fbbik.solver.rightHandEffector.target = targetTransform;
                         if (targetTransform != null)
                         {
@@ -91,8 +88,8 @@ namespace BBBNexus
                 case IKTarget.AimReference:
                     if (_aimIK != null)
                     {
-                        // Aim Transform (pivot) 必须是一个稳定且始终有效的 Transform（例如武器枪口/武器根）。
-                        // 若这里为空，FinalIK 会在 IKSolverAim.OnUpdate() 警告/报错。
+                        // 注： Aim Transform (pivot) 必须是一个稳定且始终有效的 Transform（例如武器枪口/武器根）
+                        // 若这里为空，FinalIK 会在 IKSolverAim.OnUpdate() 警告/报错
                         EnsureAimTargetProxy();
                         EnsureAimPivotFallback();
 
@@ -129,7 +126,7 @@ namespace BBBNexus
 
                         if (_aimIK.solver.target == null) _aimIK.solver.target = _aimTargetProxy;
 
-                        // 仍然写 IKPosition/Weight，兼容 FinalIK 的内部流程（target != null 时会覆盖 IKPosition）
+                        // 仍然写 IKPosition/Weight 兼容 FinalIK 的内部流程（target != null 时会覆盖 IKPosition）
                         _aimIK.solver.IKPosition = position;
                         _aimIK.solver.IKPositionWeight = weight;
                     }
@@ -183,9 +180,9 @@ namespace BBBNexus
                 case IKTarget.AimReference:
                     if (_aimIK != null)
                     {
-                        // 不要把 solver.transform 清空。
-                        // AimIKWeight=0 时 solver 早退，但内部仍可能访问 transform 做连续性计算/调试。
-                        // pivot 永远保持一个有效引用，避免 NullReferenceException。
+                        // 不要把 solver.transform 清空 
+                        // AimIKWeight=0 时 solver 早退 但内部仍可能访问 transform 做连续性计算/调试 
+                        // pivot 永远保持一个有效引用 避免 NullReferenceException
                         EnsureAimPivotFallback();
                         if (_aimIK.solver.transform == null) _aimIK.solver.transform = _aimPivotFallback;
                     }

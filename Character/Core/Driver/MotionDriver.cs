@@ -2,12 +2,36 @@ using UnityEngine;
 
 namespace BBBNexus
 {
+
+    /*CalculateInputDrivenVelocity()  （主分支）
+    ├── CalculateFreeLookVelocity()    [自由视角模式]
+    │   ├── 1. 读取 DesiredWorldMoveDir（输入方向）
+    │   ├── 2. 通过 SmoothDampAngle 平滑角色朝向（CurrentYaw）
+    │   └── 3. 计算平滑速度（SmoothSpeed）
+    │
+    └── CalculateAimVelocity()         [瞄准模式]
+        ├── 1. 角色朝向 AuthorityYaw（权威朝向）
+        ├── 2. 将摇杆输入投影到 forward/right
+        ├── 3. 检测反向输入（直接清零速度平滑状态）
+        └── 4. 计算平滑速度
+
+    CalculateClipDrivenVelocity()   （动画驱动分支）
+    ├── 曲线段阶段 → CalculateCurveVelocity()
+    │   ├── 1. 读取旋转曲线计算转向角度
+    │   ├── 2. 读取速度曲线
+    │   └── 3. 使用动画目标方向生成世界速度
+    │
+    └── 混合段阶段（Mixed） → 切回 CalculateInputDrivenVelocity()
+        ├── 1. 对齐速度/旋转状态
+        └── 2. 恢复输入驱动*/
+
     /// <summary>
-    /// 运动驱动器：将黑板(输入/动画曲线/扭曲数据)转换为 CharacterController.Move。
-    /// 优化目标：减少 Unity 属性开销( eulerAngles/velocity/materialized quaternion )，并保证每帧重力只积分一次。
+    /// 角色运动的核心驱动器 负责将输入、动画曲线、物理参数
+    /// 转换为实际的 CharacterController.Move()调用 驱动角色在场景中的实际位移
     /// </summary>
     public class MotionDriver
     {
+        // 注：在最新版本 主要优化了Unity的底层开销(eulerAngles/velocity/materialized quaternion) 并保证每帧重力只积分一次
         #region Dependencies
         private readonly PlayerController _player;
         private readonly CharacterController _cc;
@@ -284,7 +308,7 @@ namespace BBBNexus
                 return Vector3.zero;
             }
 
-            // 平面 forward/right 投影：避免 Quaternion.Euler + eulerAngles
+            // 平面 forward/right 投影
             Vector3 f = _transform.forward;
             f.y = 0f;
             float fMag = f.magnitude;
@@ -351,7 +375,7 @@ namespace BBBNexus
 
         private void ApplySmoothYaw(float targetYaw, float smoothTime)
         {
-            // 用 CurrentYaw 做权威 yaw，减少 eulerAngles 读取次数
+            // 用 CurrentYaw 做权威 yaw
             float currentYaw = _data.CurrentYaw;
             if (currentYaw == 0f)
             {
@@ -383,7 +407,7 @@ namespace BBBNexus
         };
 
         /// <summary>
-        /// 获取本帧重力(只积分一次)。
+        /// 获取本帧重力
         /// </summary>
         private Vector3 GetGravityThisFrame()
         {
@@ -436,7 +460,7 @@ namespace BBBNexus
 
         private void AlignAndResetForInputTransition()
         {
-            // Mixed 切换输入段：清理旋转速度，避免 SmoothDampAngle 残留
+            // Mixed 切换输入段：清理旋转速度 避免 SmoothDampAngle 残留
             _data.RotationVelocity = 0f;
             _data.CurrentYaw = _transform.eulerAngles.y;
             _curve.IsInitialized = false;

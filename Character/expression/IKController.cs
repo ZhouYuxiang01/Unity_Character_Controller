@@ -18,7 +18,6 @@ namespace BBBNexus
         private IPlayerIKSource _ikSource => _player.IKSource;
         private Transform _lastAimReference = null;
 
-        // --- 运行时平滑状态 ---
         private float _leftHandWeight;
         private float _leftHandVelocity;
 
@@ -38,14 +37,13 @@ namespace BBBNexus
             _lookAtPositionSmoothTime = _config.Aiming.AimIkChaseSmoothTime;
         }
 
-        // 每帧调用一次，由 PlayerController 在主循环中更新
-        // 优先级从高到低：LOD拦截 -> Warp IK 拦截 -> Aim 基准点更新 -> 左手 IK -> 右手 IK -> 头部注视
+        // 优先级：LOD拦截 -> Warp IK 拦截 -> Aim 基准点更新 -> 左手 IK -> 右手 IK -> 头部注视
         public void Update()
         {
             if (_ikSource == null) return;
 
-            // 物品切换/对象池回收场景下：AimReference 可能指向已失活的 muzzle。
-            // 这里做一次“运行时自愈”，保证底层 IK 不会持续追踪无效 Transform。
+            // 物品切换/对象池回收场景下：AimReference 可能指向已失活的 muzzle
+            // 这里做一次检查 保证底层 IK 不会持续追踪无效 Transform (不然角色会跟开了挂一样转起来)
             SanitizeAimReference();
 
             if (_data.Arbitration.BlockIK)
@@ -59,7 +57,6 @@ namespace BBBNexus
                 return;
             }
 
-            // If not blocked by arbitration, ensure IK component is enabled
             if (!_isIKActive)
             {
                 _ikSource.EnableAllIK();
@@ -67,7 +64,6 @@ namespace BBBNexus
             }
 
             // 翻越/攀爬WarpIK更新
-
             if (_data.IsWarping)
             {
                 float warpHandWeight = _data.ActiveWarpData.HandIKWeightCurve.Evaluate(_data.NormalizedWarpTime);
@@ -80,7 +76,7 @@ namespace BBBNexus
                 return;
             }
 
-            // AimIK 基准点更新（需要可逆：从瞄准切到非瞄准时必须清理）
+            // AimIK 基准点更新（注：从瞄准切到非瞄准时必须清理）
             if (_data.IsAiming && _data.WantsLookAtIK && _data.CurrentAimReference != null)
             {
                 if (_data.CurrentAimReference != _lastAimReference)
@@ -91,7 +87,7 @@ namespace BBBNexus
             }
             else
             {
-                // 非瞄准/无引用：确保 AimReference 权重归零，并清掉缓存引用
+                // 非瞄准/无引用：确保 AimReference 权重归零 并清掉缓存引用
                 if (_lastAimReference != null)
                 {
                     _ikSource.UpdateIKWeight(IKTarget.AimReference, 0f);
@@ -158,17 +154,15 @@ namespace BBBNexus
 
         private void SanitizeAimReference()
         {
-            // Unity 的特殊 null：被 Destroy 的对象在 C# 层会表现为 == null。
-            // 对象池失活：Transform 仍存在但 gameObject.activeInHierarchy=false。
             Transform current = _data.CurrentAimReference;
 
             if (_data.CurrentAimReference != null) return;
 
-            // 清理黑板，防止后续系统继续写入旧引用。
+            // 清理黑板，防止后续系统继续写入旧引用
             _data.CurrentAimReference = null;
             _data.WantsLookAtIK = false;
 
-            // 同步清理 IKController 内部缓存 + 底层权重，避免 “上一个 muzzle 还在显示”。
+            // 同步清理 IKController 内部缓存 + 底层权重
             if (_lastAimReference != null)
             {
                 _ikSource.UpdateIKWeight(IKTarget.AimReference, 0f);
@@ -189,7 +183,7 @@ namespace BBBNexus
             _rightHandVelocity = 0f;
             _lookAtVelocity = 0f;
 
-            // 向底层传达归零指令（确保底层在被瘫痪的前一刻，内部参数已经归零）
+            // 向底层传达归零指令（确保本系统在被瘫痪的前一刻，内部参数已经归零）
             _ikSource.UpdateIKWeight(IKTarget.LeftHand, 0f);
             _ikSource.UpdateIKWeight(IKTarget.RightHand, 0f);
             _ikSource.UpdateIKWeight(IKTarget.HeadLook, 0f);

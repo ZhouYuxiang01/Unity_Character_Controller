@@ -66,17 +66,15 @@ namespace BBBNexus
             rawData.Number3Held = number3Action != null && number3Action.action.IsPressed();
             rawData.Number4Held = number4Action != null && number4Action.action.IsPressed();
             rawData.Number5Held = number5Action != null && number5Action.action.IsPressed();
-            rawData.ActionHeld = actionAction != null && actionAction.action.IsPressed(); // Renamed to ActionHeld
-            // FireHeld 已合并到 LeftMouseHeld，所以只赋值 LeftMouseHeld
+            rawData.ActionHeld = actionAction != null && actionAction.action.IsPressed(); 
             rawData.LeftMouseHeld = LeftMouseAction != null && LeftMouseAction.action.IsPressed();
 
-            // ============== 瞬间硬件事实 (JustPressed) 依赖底层API绝对不漏键 ==============
+            // ============== 瞬间硬件数据  ==============
             rawData.JumpJustPressed = jumpAction != null && jumpAction.action.WasPressedThisFrame();
             rawData.DodgeJustPressed = dodgeAction != null && dodgeAction.action.WasPressedThisFrame();
             rawData.RollJustPressed = rollAction != null && rollAction.action.WasPressedThisFrame();
-            // FireJustPressed 已合并到 LeftMouseJustPressed，所以只赋值 LeftMouseJustPressed
             rawData.LeftMouseJustPressed = LeftMouseAction != null && LeftMouseAction.action.WasPressedThisFrame();
-            rawData.FireJustPressed = rawData.LeftMouseJustPressed; // 兼容别名
+            rawData.FireJustPressed = rawData.LeftMouseJustPressed; 
             
             rawData.Expression1JustPressed = expression1Action != null && expression1Action.action.WasPressedThisFrame();
             rawData.Expression2JustPressed = expression2Action != null && expression2Action.action.WasPressedThisFrame();

@@ -4,15 +4,15 @@ namespace BBBNexus
 {
     /// <summary>
     /// 系统流转的第一道关卡 唯一的数据生产者
-    /// 数据流向：从 IInputSource (硬件) 提取脏数据 - 栈上清洗 (防抖/缓存) - 压入堆内存黑板 (InputData)
-    /// 拥有绝对的写入权限。对外部仅暴露只读引用，外部系统只能通过 Consume 接口进行受控的数据核销
+    /// 数据流向：从 IInputSource提取原始输入数据 - 栈上清洗 (防抖/缓存) - 压入堆内存黑板 (InputData)
+    /// 拥有绝对的写入权限  对外部仅暴露只读引用 外部系统只能通过 Consume 接口进行受控的数据核销
     /// </summary>
     public class InputPipeline
     {
         // 输入源接口（现在使用具体基类以便读取序列化配置）
         private readonly InputSourceBase _inputSource;
 
-        // 0 GC 堆内存容器，在构造时预分配，全生命周期复用
+        //  堆内存容器
         private InputData _inputData;
 
         // 栈上瞬时数据缓存
@@ -35,7 +35,7 @@ namespace BBBNexus
         /// </summary>
         public InputData Current => _inputData;
 
-        // 构造函数只接受 InputSourceBase，其他配置从 inputSource 注入；如果 inputSource 未配置则使用其字段的默认值
+        // 构造函数只接受 InputSourceBase 其他配置从 inputSource 注入；如果 inputSource 未配置则使用其字段的默认值
         public InputPipeline(InputSourceBase inputSource)
         {
             _inputSource = inputSource;
@@ -107,7 +107,7 @@ namespace BBBNexus
                 currentFrame.Processed.Move = Vector2.zero;
             }
 
-            // 注：LookAxis 属于 Delta (增量) 数据，绝对禁止在此处 SmoothDamp，直接原样透传给摄像机逻辑 不然视角会像弹簧一样回到原位
+            // 注：LookAxis属于Delta(增量)数据 绝对禁止在此处 SmoothDamp 直接原样透传给摄像机逻辑 不然视角会像弹簧一样回到原位
             currentFrame.Processed.Look = _rawData.LookAxis;
 
             //  持续按压状态的继承
@@ -135,8 +135,8 @@ namespace BBBNexus
 
             currentFrame.Processed.ActionHeld = _rawData.ActionHeld;
 
-            //  动作缓存池调度
-            // 核心机制：一旦硬件触发 JustPressed 给对应的Timer充能 随后随时间衰减。
+            // 动作缓存池调度
+            // 一旦硬件触发 JustPressed 给对应的Timer充能 随后随时间衰减。
             // 外部读取的 bool Pressed 是依赖此 Timer 的计算属性
             float dt = Time.deltaTime;
             var lastProc = _inputData.lastFrameData.Processed;
@@ -173,31 +173,23 @@ namespace BBBNexus
         }
 
         // 消费仲裁接口 
-        // IntentProcessor (意图仲裁) 或 State在动作确立时调用。
-        // 调用后 Timer 瞬间归零 配合 实现同帧内核销。
+        // IntentProcessor (意图判定) 或 State在动作确立时调用
+        // 调用后 Timer 瞬间归零 配合 实现同帧内核销
 
         public void ConsumeJumpPressed() { var f = _inputData.currentFrameData; f.Processed.JumpBufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeDodgePressed() { var f = _inputData.currentFrameData; f.Processed.DodgeBufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeRollPressed() { var f = _inputData.currentFrameData; f.Processed.RollBufferTimer = 0f; _inputData.currentFrameData = f; }
-
         public void ConsumeFirePressed() => ConsumeLeftMousePressed();
-
         public void ConsumeExpression1Pressed() { var f = _inputData.currentFrameData; f.Processed.Expression1BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeExpression2Pressed() { var f = _inputData.currentFrameData; f.Processed.Expression2BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeExpression3Pressed() { var f = _inputData.currentFrameData; f.Processed.Expression3BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeExpression4Pressed() { var f = _inputData.currentFrameData; f.Processed.Expression4BufferTimer = 0f; _inputData.currentFrameData = f; }
-
         public void ConsumeNumber1Pressed() { var f = _inputData.currentFrameData; f.Processed.Number1BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeNumber2Pressed() { var f = _inputData.currentFrameData; f.Processed.Number2BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeNumber3Pressed() { var f = _inputData.currentFrameData; f.Processed.Number3BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeNumber4Pressed() { var f = _inputData.currentFrameData; f.Processed.Number4BufferTimer = 0f; _inputData.currentFrameData = f; }
         public void ConsumeNumber5Pressed() { var f = _inputData.currentFrameData; f.Processed.Number5BufferTimer = 0f; _inputData.currentFrameData = f; }
-
         public void ConsumeActionPressed() { var f = _inputData.currentFrameData; f.Processed.ActionBufferTimer = 0f; _inputData.currentFrameData = f; }
-
-        // legacy alias (if any code still calls old name, keep a thin forwarder)
-        public void ConsumeWavePressed() => ConsumeActionPressed();
-
         public void ConsumeLeftMousePressed() { var f = _inputData.currentFrameData; f.Processed.LeftMouseBufferTimer = 0f; _inputData.currentFrameData = f; }
     }
 }

@@ -23,7 +23,7 @@ namespace BBBNexus
         // 只有当接收到明确的跳跃指令时，才瞬间进行物理环境扫描
         public bool Update(in ProcessedInputData input)
         {
-            // 响应式触发：只有按键按下的那一帧，才启动极其昂贵的射线检测逻辑
+            // 只有按键按下的那一帧，才启动极其昂贵的射线检测逻辑
             if (input.JumpPressed)
             {
                 if (HandleJumpIntent(_data))
@@ -38,7 +38,7 @@ namespace BBBNexus
         // 跳跃意图处理与优先级仲裁
         private bool HandleJumpIntent(PlayerRuntimeData data)
         {
-            // 优先级1：低位翻越检测 (在这里才真正发射射线)
+            // 低位翻越检测 (在这里才真正发射射线)
             if (TryGetVaultIntent(data, out VaultObstacleInfo info, _config.Vaulting.LowVaultMinHeight, _config.Vaulting.LowVaultMaxHeight))
             {
                 data.WantsToVault = true;
@@ -47,7 +47,7 @@ namespace BBBNexus
                 return true;
             }
 
-            // 优先级2：高位翻越检测 (在这里才真正发射射线)
+            // 高位翻越检测
             if (TryGetVaultIntent(data, out info, _config.Vaulting.HighVaultMinHeight, _config.Vaulting.HighVaultMaxHeight))
             {
                 data.WantsToVault = true;
@@ -56,14 +56,14 @@ namespace BBBNexus
                 return true;
             }
 
-            // 优先级3：普通地面跳跃
+            // 普通地面跳跃
             if (data.IsGrounded)
             {
                 data.WantsToJump = true;
                 return true;
             }
 
-            // 优先级4：空中二段跳
+            // 空中二段跳
             if (!data.IsGrounded && !data.HasPerformedDoubleJumpInAir)
             {
                 data.DoubleJumpDirection = DoubleJumpDirection.Up;
@@ -79,7 +79,6 @@ namespace BBBNexus
             return DetectObstacle(out info, minHeight, maxHeight, true);
         }
 
-        // 底层物理射线检测逻辑保持不变
         private bool DetectObstacle(out VaultObstacleInfo info, float minHeight, float maxHeight, bool isSilent)
         {
             info = new VaultObstacleInfo { IsValid = false };
@@ -90,24 +89,24 @@ namespace BBBNexus
             // 从角色上方偏移 VaultForwardRayHeight 作为前方探测的起点
 
             Vector3 forward = root.forward;
-            // forward = 角色面向，用于朝前的射线方向
+            // forward = 角色面向 用于朝前的射线方向
 
             if (Physics.Raycast(rayStart, forward, out RaycastHit wallHit, _config.Vaulting.VaultForwardRayLength, _obstacleMask))
             {
-                // 命中前方物体，wallHit 包含击中点与法线
+                // 命中前方物体 wallHit 包含击中点与法线
 
                 if (Vector3.Dot(wallHit.normal, Vector3.up) > 0.1f) return false;
-                // 如果命中面的法线接近上向（点积大），说明是地面或缓坡，退出判断
+                // 如果命中面的法线接近上向（点积大） 说明是地面或缓坡 退出判断
 
                 Vector3 downRayStart = wallHit.point + Vector3.up * _config.Vaulting.VaultDownwardRayLength + forward * _config.Vaulting.VaultDownwardRayOffset;
-                // 在墙面点上方并向前偏移，作为向下搜索 ledge 的起点
+                // 在墙面点上方并向前偏移 作为向下搜索 ledge 的起点
 
                 if (Physics.Raycast(downRayStart, Vector3.down, out RaycastHit ledgeHit, _config.Vaulting.VaultDownwardRayLength, _obstacleMask))
                 {
                     // 找到墙顶或台阶的顶面 ledgeHit
 
                     if (Vector3.Dot(ledgeHit.normal, Vector3.up) < 0.9f) return false;
-                    // ledge 的法线必须接近上向，保证为可站立的平面
+                    // ledge 的法线必须接近上向 保证为可站立的平面
 
                     float height = ledgeHit.point.y - root.position.y;
                     // 计算台阶顶面相对于角色根点的高度
@@ -139,7 +138,7 @@ namespace BBBNexus
                     if (!foundGround)
                     {
                         finalLandPoint = landRayStart + Vector3.down * 0.5f;
-                        // 未找到地面时使用兜底点（下移0.5m）作为预估落点，保证数据可用
+                        // 未找到地面时使用兜底点（下移0.5m）作为预估落点 保证数据可用
                     }
 
                     info.IsValid = true;

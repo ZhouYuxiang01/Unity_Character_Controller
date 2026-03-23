@@ -35,7 +35,6 @@ namespace BBBNexus
         private float _ikEnableTimePoint;
         private bool _ikDisableScheduled;
         private float _ikDisableTimePoint;
-        private bool _ikActive;
 
         // 初始化实例和配置
         public void Initialize(ItemInstance instanceData)
@@ -66,7 +65,6 @@ namespace BBBNexus
                 else
                 {
                     _player.RuntimeData.WantsLeftHandIK = true;
-                    _ikActive = true;
                 }
             }
             
@@ -99,7 +97,6 @@ namespace BBBNexus
                     if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == _instance)
                     {
                         _player.RuntimeData.WantsLeftHandIK = true;
-                        _ikActive = true;
                     }
                 }
             }
@@ -113,7 +110,6 @@ namespace BBBNexus
                     {
                         _player.RuntimeData.WantsLeftHandIK = false;
                         _player.RuntimeData.LeftHandGoal = null;
-                        _ikActive = false;
                     }
                 }
             }
@@ -195,10 +191,6 @@ namespace BBBNexus
                 _ikDisableScheduled = true;
                 _ikDisableTimePoint = Time.time + _cannonConfig.DisableIKTime;
             }
-            else
-            {
-                _ikActive = false;
-            }
 
             if (_player != null && _player.RuntimeData != null && _player.RuntimeData.CurrentItem == null)
             {
@@ -215,7 +207,6 @@ namespace BBBNexus
             _wasAiming = false;
             _ikEnableScheduled = false;
             _ikDisableScheduled = false;
-            _ikActive = false;
             _lastFireTime = 0f;
 
             if (_muzzleFlash != null) _muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

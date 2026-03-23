@@ -17,6 +17,14 @@ namespace BBBNexus
         public void Update()
         {
             if (_player == null || _data == null) return;
+            
+            // 仲裁标记检查：音效系统被阻断时 清空队列并返回
+            if (_data.Arbitration.BlockAudio)
+            {
+                _data.SfxQueue.Clear();
+                return;
+            }
+            
             if (_player.AudioDriver == null) { _data.SfxQueue.Clear(); return; }
 
             int count = _data.SfxQueue.Count;
