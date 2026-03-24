@@ -1,5 +1,7 @@
 using UnityEngine;
+#if BBBNEXUS_HAS_CINEMACHINE
 using Cinemachine;
+#endif
 
 namespace BBBNexus
 {
@@ -10,9 +12,11 @@ namespace BBBNexus
         [Header("监听对象")]
         [SerializeField] private PlayerController _player;
 
+#if BBBNEXUS_HAS_CINEMACHINE
         [Header("虚拟相机")]
         [SerializeField] private CinemachineVirtualCamera _freeLookCam; // 探索
         [SerializeField] private CinemachineVirtualCamera _aimCam; // 瞄准
+#endif
 
         [Header("探索模式缩放 (鼠标滚轮)")]
         [Tooltip("是否允许探索模式使用鼠标滚轮拉近拉远")] 
@@ -54,12 +58,14 @@ namespace BBBNexus
                 Cursor.lockState = CursorLock;
             }
 
+#if BBBNEXUS_HAS_CINEMACHINE
             // 初始化平滑缩放的目标值为当前相机 FOV
             if (_freeLookCam != null)
             {
                 _targetFov = _freeLookCam.m_Lens.FieldOfView;
                 _fovVelocity = 0f;
             }
+#endif
 
             _wasAiming = _player != null && _player.RuntimeData != null && _player.RuntimeData.IsAiming;
         }
@@ -70,13 +76,16 @@ namespace BBBNexus
 
             // 检测瞄准状态切换：进入/退出瞄准时重置目标 FOV 避免瞬移
             bool isAiming = _player.RuntimeData.IsAiming;
+#if BBBNEXUS_HAS_CINEMACHINE
             if (_freeLookCam != null && isAiming != _wasAiming)
             {
                 _targetFov = _freeLookCam.m_Lens.FieldOfView;
                 _fovVelocity = 0f;
             }
+#endif
             _wasAiming = isAiming;
 
+#if BBBNEXUS_HAS_CINEMACHINE
             // 探索模式滚轮缩放：修改目标 FOV（即时） 实际应用采用平滑过渡
             // 仅在非瞄准状态启用 避免与瞄准镜/开火视角冲突
             if (EnableFreeLookZoom && !isAiming && _freeLookCam != null)
@@ -106,6 +115,7 @@ namespace BBBNexus
                 if (_aimCam != null) _aimCam.Priority = 10;
                 if (_freeLookCam != null) _freeLookCam.Priority = 20;
             }
+#endif
         }
 
         // 在 Game 窗口绘制简单的准星 HUD（仅运行时）

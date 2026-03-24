@@ -1,11 +1,15 @@
 using UnityEngine;
+
+#if BBBNEXUS_HAS_FINALIK
 using RootMotion.FinalIK;
+#endif
 
 namespace BBBNexus
 {
     // Final IK 插件适配器 负责将抽象的 IK 意图转化为具体的插件指令
     public class FinalIKSource : PlayerIKSourceBase
     {
+#if BBBNEXUS_HAS_FINALIK
         // 核心组件引用 包含全身双足与瞄准求解器实例
         [Header("Final IK Components")]
         [SerializeField] private FullBodyBipedIK _fbbik;
@@ -208,5 +212,20 @@ namespace BBBNexus
             if (_fbbik != null) _fbbik.enabled = false;
             if (_aimIK != null) _aimIK.enabled = false;
         }
+#else
+        // 【防报错的必要占位（非常有用）】
+        // 疑问：为什么要写这些空方法，是不是偷偷搞个没用的东西？
+        // 回答：绝对不是！因为 FinalIKSource 继承了基类 PlayerIKSourceBase（或接口）。
+        // 如果用户没装 FinalIK，我们把整个类或者所有方法直接删掉，那么：
+        // 1. 编译器会报错：“FinalIKSource 没有实现基类的抽象方法”。
+        // 2. 原本挂载了这个脚本的 Prefab（预制体）会丢失脚本引用（Missing Script）。
+        // 提供这些空方法，就是为了让引擎“觉得”这个类依然合法完整，顺利通过编译，
+        // 仅仅是运行时调用时没有任何作用（因为没有插件主体）。这正是解耦的核心手段！
+        public override void SetIKTarget(IKTarget target, Transform targetTransform, float weight) { }
+        public override void SetIKTarget(IKTarget target, Vector3 position, Quaternion rotation, float weight) { }
+        public override void UpdateIKWeight(IKTarget target, float weight) { }
+        public override void EnableAllIK() { }
+        public override void DisableAllIK() { }
+#endif
     }
 }

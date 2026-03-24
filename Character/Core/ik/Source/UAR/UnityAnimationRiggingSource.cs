@@ -1,5 +1,7 @@
 using UnityEngine;
+#if BBBNEXUS_HAS_UAR
 using UnityEngine.Animations.Rigging;
+#endif
 
 namespace BBBNexus
 {
@@ -8,6 +10,7 @@ namespace BBBNexus
     //另外 瞄准的ik逻辑也是空置的 原因相同
     public class UnityAnimationRiggingSource : PlayerIKSourceBase
     {
+#if BBBNEXUS_HAS_UAR
         [Header("Hand IK Components")]
         [SerializeField] private TwoBoneIKConstraint _leftHandIK;
         [SerializeField] private TwoBoneIKConstraint _rightHandIK;
@@ -142,5 +145,18 @@ namespace BBBNexus
                 if (_headLookAtIK != null) _headLookAtIK.enabled = false;
             }
         }
+#else
+        // 【为何这里保留了空方法？这不是没用的废代码！】
+        // 工作原理：当项目里没有导入 UAR 插件时，宏 BBBNEXUS_HAS_UAR 就会失效。
+        // 上面所有的实际逻辑都会被编译器忽略。但由于本类继承自 PlayerIKSourceBase，
+        // 必须要实现接口里的所有抽象方法（SetIKTarget 等函数）。如果让它们也被清理掉，
+        // Unity 编译这部分代码时就会因为“派生类未完全实现抽象接口”而直接红字报错！
+        // 因此，写下这些空函数不仅极有必要，还能保证原本挂在角色身上的预制体脚本引用不丢失。
+        public override void SetIKTarget(IKTarget target, Transform targetTransform, float weight) { }
+        public override void SetIKTarget(IKTarget target, Vector3 position, Quaternion rotation, float weight) { }
+        public override void UpdateIKWeight(IKTarget target, float weight) { }
+        public override void EnableAllIK() { }
+        public override void DisableAllIK() { }
+#endif
     }
 }

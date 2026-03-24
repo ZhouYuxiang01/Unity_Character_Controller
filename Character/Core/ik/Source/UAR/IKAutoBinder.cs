@@ -1,5 +1,7 @@
 using UnityEngine;
+#if BBBNEXUS_HAS_UAR
 using UnityEngine.Animations.Rigging;
+#endif
 using System.Collections.Generic;
 
 
@@ -16,6 +18,7 @@ namespace BBBNexus
     [ExecuteInEditMode]
     public class IKAutoBinder : MonoBehaviour
     {
+#if BBBNEXUS_HAS_UAR
         [Header("--- 目标角色 (Target) ---")]
         [Tooltip("将角色根物体(带Animator)拖到这里")]
         public Animator TargetCharacter;
@@ -162,6 +165,7 @@ namespace BBBNexus
             }
         }
 #endif
+#endif
     }
 
     // --- 自定义 Inspector 按钮 ---
@@ -169,6 +173,7 @@ namespace BBBNexus
     [CustomEditor(typeof(IKAutoBinder))]
     public class IKAutoBinderEditor : Editor
     {
+#if BBBNEXUS_HAS_UAR
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
@@ -183,6 +188,7 @@ namespace BBBNexus
             }
             GUI.backgroundColor = Color.white;
         }
+#endif
     }
 
 
