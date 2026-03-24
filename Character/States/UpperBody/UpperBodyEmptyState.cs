@@ -4,7 +4,7 @@ namespace BBBNexus
     // 当玩家没有装备任何物品时进入此状态 将上身权重降至0 
     public class UpperBodyEmptyState : UpperBodyBaseState
     {
-        public UpperBodyEmptyState(PlayerController player) : base(player) { }
+        public UpperBodyEmptyState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 关闭上半身动画层 权重淡出到0
         public override void Enter()

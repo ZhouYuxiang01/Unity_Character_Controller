@@ -9,7 +9,7 @@ namespace BBBNexus
         private float _deathTimeAt;
         private const float RESPAWN_DELAY = 3f;
 
-        public PlayerDeathState(PlayerController player) : base(player) { }
+        public PlayerDeathState(BBBCharacterController player) : base(player) { }
 
         protected override bool CheckInterrupts() => false;
 

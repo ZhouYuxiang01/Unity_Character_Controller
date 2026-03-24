@@ -9,11 +9,11 @@ namespace BBBNexus
     /// </summary>
     public abstract class MeleeWeaponSO : EquippableItemSO
     {
-        [Header("--- 拔出硬直 (Equip Hardening) ---")]
+        [Header("--- 拔出硬直 ---")]
         [Tooltip("拔出动画允许退出时间（秒）")]
         public float EquipEndTime = 0.5f;
 
-        [Header("--- 近战武器独有配置 (Melee Stats) ---")]
+        [Header("--- 近战武器独有配置 ---")]
         [Tooltip("攻击冷却时间 (秒)")]
         public float AttackCooldown = 0.5f;
 

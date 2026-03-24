@@ -25,7 +25,7 @@ namespace BBBNexus
         // 持有各参数处理器
         private readonly MovementParameterProcessor _movementParameterProcessor;
         private readonly ViewRotationProcessor _viewRotationProcessor;
-        public MainProcessorPipeline(PlayerController player, InputPipeline inputPipeline)
+        public MainProcessorPipeline(BBBCharacterController player, InputPipeline inputPipeline)
         {
             _inputPipeline = inputPipeline; // 重构 不再自己 new 接收外部独立运行的输入管线
             _runtimeData = player.RuntimeData;

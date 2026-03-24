@@ -18,7 +18,7 @@ namespace BBBNexus
     [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(AudioSource))]
     [DefaultExecutionOrder(-300)]
-    public class PlayerController : MonoBehaviour, IDamageable, IPoolable
+    public class BBBCharacterController : MonoBehaviour, IDamageable, IPoolable
     {
         [Header("--- 输入与表现源  ---")]
         [Tooltip("输入源 - 可拖拽赋值任何继承 IInputSourceBase 的组件")]
@@ -30,7 +30,7 @@ namespace BBBNexus
         [Tooltip("用于播放角色音效的 AudioSource 建议关闭 Loop")]
         public AudioSource SfxSource;
         [Tooltip("注意: aniamncercomponet也记得要引用角色animator")]
-        public Animator animator;
+        public Animator Animator;
 
         [Header("--- 核心配置 ---")]
         public PlayerSO Config;
@@ -63,8 +63,8 @@ namespace BBBNexus
 
         //子系统控制器
         public UpperBodyController UpperBodyCtrl { get; private set; }
-        public FacialController _facialController { get; private set; }
-        public IKController _ikController { get; private set; }
+        public FacialController FacialController { get; private set; }
+        public IKController IkController { get; private set; }
         public PlayerInventoryController InventoryController { get; private set; }
         public ActionController ActionController { get; private set; }
         public AudioController AudioController { get; private set; }
@@ -93,14 +93,14 @@ namespace BBBNexus
         // Awake 负责内存分配、找组件、依赖注入 
         private void Awake()
         {
-            animator = GetComponent<Animator>();
+            Animator = GetComponent<Animator>();
             Animancer = GetComponent<AnimancerComponent>();
             CharController = GetComponent<CharacterController>();
 
-            LeftHandBone=animator.GetBoneTransform(HumanBodyBones.LeftHand);
-            RightHandBone=animator.GetBoneTransform(HumanBodyBones.RightHand);
-            LeftFootBone=animator.GetBoneTransform(HumanBodyBones.LeftFoot);
-            RightFootBone=animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            LeftHandBone=Animator.GetBoneTransform(HumanBodyBones.LeftHand);
+            RightHandBone=Animator.GetBoneTransform(HumanBodyBones.RightHand);
+            LeftFootBone=Animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            RightFootBone=Animator.GetBoneTransform(HumanBodyBones.RightFoot);
 
             // 统一的面板依赖注入检查 失败直接抛出异常
             try
@@ -166,8 +166,8 @@ namespace BBBNexus
             // 实例化子分层控制器
             InventoryController = new PlayerInventoryController(this);
             UpperBodyCtrl = new UpperBodyController(this);
-            _facialController = new FacialController(this);
-            _ikController = new IKController(this);
+            FacialController = new FacialController(this);
+            IkController = new IKController(this);
             ActionController = new ActionController(this);
             AudioController = new AudioController(this);
 
@@ -286,7 +286,7 @@ namespace BBBNexus
 
             UpperBodyCtrl.Update();
 
-            _facialController.Update();
+            FacialController.Update();
 
             ActionController.Update();
 
@@ -316,7 +316,7 @@ namespace BBBNexus
 
             StateMachine.CurrentState?.PhysicsUpdate();
 
-            _ikController.Update();
+            IkController.Update();
 
             ArbiterPipeline?.ProcessLateUpdateArbiters();
 

@@ -10,7 +10,7 @@ namespace BBBNexus
     /// </summary>
     public sealed class ActionController
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
         private readonly InputPipeline _input;
@@ -20,7 +20,7 @@ namespace BBBNexus
         // 默认优先级：保证能打断普通移动 但低于翻滚/闪避等
         private const int DefaultPriority = 25;
 
-        public ActionController(PlayerController player)
+        public ActionController(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;

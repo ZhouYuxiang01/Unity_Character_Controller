@@ -10,7 +10,7 @@ namespace BBBNexus
 
         public int CurrentPriority => data.Override.IsActive ? data.Override.Request.Priority : 0;
 
-        public OverrideState(PlayerController player) : base(player) { }
+        public OverrideState(BBBCharacterController player) : base(player) { }
 
         public override void Enter()
         {

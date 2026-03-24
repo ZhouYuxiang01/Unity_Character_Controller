@@ -7,7 +7,7 @@ namespace BBBNexus
     // 物品栏管理器
     public class PlayerInventoryController
     {
-        private PlayerController _player;
+        private BBBCharacterController _player;
         private PlayerRuntimeData _data; 
 
         public InventorySystem MainInventory { get; private set; }
@@ -15,7 +15,7 @@ namespace BBBNexus
 
         private int _currentSlotIndex = -1;
 
-        public PlayerInventoryController(PlayerController player)
+        public PlayerInventoryController(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData; 

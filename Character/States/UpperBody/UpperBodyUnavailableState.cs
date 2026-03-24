@@ -4,7 +4,7 @@ namespace BBBNexus
     // 当玩家无法操纵上半身时进入 如掉落 受击等情况 强制解除当前装备
     public class UpperBodyUnavailableState : UpperBodyBaseState
     {
-        public UpperBodyUnavailableState(PlayerController player) : base(player) { }
+        public UpperBodyUnavailableState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 关闭上半身层权重 强制解除装备
         public override void Enter()

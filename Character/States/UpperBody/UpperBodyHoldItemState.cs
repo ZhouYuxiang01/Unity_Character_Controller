@@ -10,7 +10,7 @@ namespace BBBNexus
         private IHoldableItem _currentItem;
         private ItemInstance _cachedInstance;
 
-        public UpperBodyHoldItemState(PlayerController p) : base(p) { }
+        public UpperBodyHoldItemState(BBBCharacterController p) : base(p) { }
 
         // 进入状态 强制上半身动画层权重为1 执行一次强制同步
         public override void Enter()

@@ -6,7 +6,7 @@ namespace BBBNexus
     // 负责根据当前运动状态和脚相位选择急停动画 播放减速制动动画 最后回到空闲状态 
     public class PlayerStopState : PlayerBaseState
     {
-        public PlayerStopState(PlayerController player) : base(player) { }
+        public PlayerStopState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 选择对应的急停动画并注册结束回调
         public override void Enter()

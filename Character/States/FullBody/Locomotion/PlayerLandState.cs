@@ -10,7 +10,7 @@ namespace BBBNexus
         private MotionClipData _currentClip;
         private bool _endTimeTriggered;
 
-        public PlayerLandState(PlayerController player) : base(player) { }
+        public PlayerLandState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 根据下落高度等级和当前运动状态选择落地缓冲动画
         public override void Enter()

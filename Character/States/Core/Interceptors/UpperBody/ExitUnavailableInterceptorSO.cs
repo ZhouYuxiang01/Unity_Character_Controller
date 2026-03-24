@@ -7,7 +7,7 @@ namespace BBBNexus
     [CreateAssetMenu(fileName = "ExitUnavailableInterceptor", menuName = "BBBNexus/Player/Interceptors/UpperBody/ExitUnavailable")]
     public class ExitUnavailableInterceptorSO : UpperBodyInterceptorSO
     {
-        public override bool TryIntercept(PlayerController player, UpperBodyBaseState currentState, out UpperBodyBaseState nextState)
+        public override bool TryIntercept(BBBCharacterController player, UpperBodyBaseState currentState, out UpperBodyBaseState nextState)
         {
             nextState = null;
 

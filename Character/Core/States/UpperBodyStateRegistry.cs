@@ -12,7 +12,7 @@ namespace BBBNexus
         private readonly Dictionary<Type, UpperBodyBaseState> _states = new Dictionary<Type, UpperBodyBaseState>();
         public UpperBodyBaseState InitialState { get; private set; }
 
-        public void InitializeFromBrain(PlayerBrainSO brain, PlayerController player)
+        public void InitializeFromBrain(PlayerBrainSO brain, BBBCharacterController player)
         {
             if (brain == null || brain.UpperBodyStates == null || brain.UpperBodyStates.Count == 0)
             {

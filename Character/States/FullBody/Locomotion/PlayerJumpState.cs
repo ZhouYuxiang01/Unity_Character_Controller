@@ -10,7 +10,7 @@ namespace BBBNexus
         private bool _canCheckLand;
         private float _jumpForce;
 
-        public PlayerJumpState(PlayerController player) : base(player) { }
+        public PlayerJumpState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 选择跳跃动画 施加跳跃力量 注册结束回调
         public override void Enter()

@@ -8,7 +8,7 @@ namespace BBBNexus
     {
         private enum SwordPhase { None, Equipping, Idle, Unequipping, Attacking }
 
-        private PlayerController _player;
+        private BBBCharacterController _player;
         private ItemInstance _instance;
         private SwordSO _config;
 
@@ -31,7 +31,7 @@ namespace BBBNexus
         }
 
         // ×°±¸
-        public void OnEquipEnter(PlayerController player)
+        public void OnEquipEnter(BBBCharacterController player)
         {
             _player = player;
             _player.RuntimeData.WantsLeftHandIK = false;

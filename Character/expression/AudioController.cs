@@ -5,10 +5,10 @@ namespace BBBNexus
     /// </summary>
     public sealed class AudioController
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerRuntimeData _data;
 
-        public AudioController(PlayerController player)
+        public AudioController(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;

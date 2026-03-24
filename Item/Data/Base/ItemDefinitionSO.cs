@@ -7,7 +7,7 @@ namespace BBBNexus
     /// </summary>
     public abstract class ItemDefinitionSO : ScriptableObject
     {
-        [Header("--- 基础信息 (Basic Info) ---")]
+        [Header("--- 基础信息 ---")]
         [Tooltip("物品的全局唯一静态ID (用于配表和存档读取)")]
         public string ItemID;
 

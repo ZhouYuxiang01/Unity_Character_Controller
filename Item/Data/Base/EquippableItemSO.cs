@@ -8,14 +8,14 @@ namespace BBBNexus
     /// </summary>
     public abstract class EquippableItemSO : ItemDefinitionSO
     {
-        [Header("--- 物理表现 (Physical Avatar) ---")]
+        [Header("--- 物理表现 ---")]
         [Tooltip("实例化到玩家手里的游戏对象 (必须包含实现了 IHoldableItem 的脚本)")]
         public GameObject Prefab;
 
         public Vector3 HoldPositionOffset;
         public Quaternion HoldRotationOffset;
 
-        [Header("--- 通用表现动画 (Universal Animations) ---")]
+        [Header("--- 通用表现动画 ---")]
         [Tooltip("拔出/装备时的动画")]
         public ClipTransition EquipAnim;
         public AnimPlayOptions EquipAnimPlayOptions = AnimPlayOptions.UpperBodyDefault;

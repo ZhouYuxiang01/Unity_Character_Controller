@@ -10,7 +10,7 @@ namespace BBBNexus
         private bool _endTimeTriggered;
         private WarpedMotionData _selectedWarpData;
 
-        public PlayerVaultState(PlayerController player) : base(player) { }
+        public PlayerVaultState(BBBCharacterController player) : base(player) { }
 
         // 翻越状态不允许被通用强制打断 避免反复进入退出
         protected override bool CheckInterrupts() => false;

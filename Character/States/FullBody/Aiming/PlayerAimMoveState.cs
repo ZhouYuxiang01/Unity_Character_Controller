@@ -9,7 +9,7 @@ namespace BBBNexus
     // 3) 支持运行时热切换动画树：运动状态变了就立刻切树 不再做旧版的“强度映射”
     public class PlayerAimMoveState : PlayerBaseState
     {
-        public PlayerAimMoveState(PlayerController player) : base(player) { }
+        public PlayerAimMoveState(BBBCharacterController player) : base(player) { }
 
         private LocomotionState _lastTreeState = LocomotionState.Idle;
 

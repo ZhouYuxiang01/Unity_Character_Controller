@@ -5,13 +5,13 @@ namespace BBBNexus
     // 使用遮罩确保只影响特定骨骼 与主状态机并行运行 互不干扰
     public class UpperBodyController
     {
-        private PlayerController _player;
+        private BBBCharacterController _player;
 
         public StateMachine StateMachine { get; private set; }
         public UpperBodyStateRegistry StateRegistry { get; private set; }
         public UpperBodyInterruptProcessor InterruptProcessor { get; private set; }
 
-        public UpperBodyController(PlayerController player)
+        public UpperBodyController(BBBCharacterController player)
         {
             _player = player;
             // 实例化独立的状态机 与全身状态机完全隔离

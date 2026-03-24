@@ -14,7 +14,7 @@ namespace BBBNexus
         /// <summary>
         /// 核心工厂方法：根据枚举名单 实例化状态并注入依赖
         /// </summary>
-        public void InitializeFromBrain(PlayerBrainSO brain, PlayerController player)
+        public void InitializeFromBrain(PlayerBrainSO brain, BBBCharacterController player)
         {
             if (brain == null || brain.AvailableStates == null || brain.AvailableStates.Count == 0)
             {

@@ -8,11 +8,11 @@ namespace BBBNexus
     // 注意 UpperBodyController 在 PlayerController 的 Start 里才初始化 所以这里采用延迟加载
     public abstract class UpperBodyBaseState : BaseState
     {
-        protected PlayerController player;
+        protected BBBCharacterController player;
         protected PlayerRuntimeData data;
         protected UpperBodyController controller;
 
-        public UpperBodyBaseState(PlayerController player)
+        public UpperBodyBaseState(BBBCharacterController player)
         {
             this.player = player;
             this.data = player.RuntimeData;

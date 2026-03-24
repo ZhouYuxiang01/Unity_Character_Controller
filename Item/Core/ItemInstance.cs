@@ -3,14 +3,12 @@ using System;
 namespace BBBNexus
 {
     // 物品运行时逻辑实例 存储在背包和手上 记录物品逻辑状态 
-    // 多个相同配置的物品可能存在 但每个实例都有独立的身份与堆叠数量 
     public class ItemInstance
     {
-        // 运行时的唯一实例 ID 即便两个物品都是 AK47 它们的 ID 也完全不同 
-        // 这用于精确追踪单个持有物品 方便卸载时精确删除 
+        // 运行时的唯一实例ID
         public string InstanceID { get; private set; }
 
-        // 绑定的离线配置 这是静态数据的源头 包含模型预制体 动画等 
+        // 绑定的离线配置 
         // 一旦赋值就不会改变 所有实例共享同一份配置 
         public ItemDefinitionSO BaseData { get; private set; }
 
@@ -31,7 +29,6 @@ namespace BBBNexus
         }
 
         // 类型转换接口 安全地将配置强转为特定子类 
-        // 这样不同的物品类型 剑 枪 药水 可以各自实现特定的配置类 
         public T GetSODataAs<T>() where T : ItemDefinitionSO
         {
             // 强转失败会返回 null 上游需自行处理 

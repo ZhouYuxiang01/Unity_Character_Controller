@@ -4,9 +4,9 @@ namespace BBBNexus
     // 职责 包装高优先级的拦截器集合 在状态逻辑之前检查是否需要强行切换状态
     public class GlobalInterruptProcessor
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
 
-        public GlobalInterruptProcessor(PlayerController player)
+        public GlobalInterruptProcessor(BBBCharacterController player)
         {
             _player = player;
         }

@@ -7,7 +7,7 @@ namespace BBBNexus
     // 它从运行时黑板读取意图并将目标与权重下发到 IPlayerIKSource
     public class IKController
     {
-        private PlayerController _player;
+        private BBBCharacterController _player;
         private PlayerRuntimeData _data;
         private PlayerSO _config;
 
@@ -29,7 +29,7 @@ namespace BBBNexus
 
         private bool _isIKActive = true;
 
-        public IKController(PlayerController player)
+        public IKController(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;

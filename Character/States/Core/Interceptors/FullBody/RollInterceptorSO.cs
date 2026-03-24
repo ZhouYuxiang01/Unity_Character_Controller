@@ -7,7 +7,7 @@ namespace BBBNexus
     [CreateAssetMenu(fileName = "RollInterceptor", menuName = "BBBNexus/Player/Interceptors/Roll")]
     public class RollInterceptorSO : StateInterceptorSO
     {
-        public override bool TryIntercept(PlayerController player, PlayerBaseState currentState, out PlayerBaseState nextState)
+        public override bool TryIntercept(BBBCharacterController player, PlayerBaseState currentState, out PlayerBaseState nextState)
         {
             nextState = null;
             var data = player.RuntimeData;

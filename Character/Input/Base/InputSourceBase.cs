@@ -20,7 +20,7 @@ namespace BBBNexus
 
         protected virtual void Awake()
         {
-            var player = GetComponentInParent<PlayerController>();
+            var player = GetComponentInParent<BBBCharacterController>();
             if (player != null) _runtimeData = player.RuntimeData;
         }
 

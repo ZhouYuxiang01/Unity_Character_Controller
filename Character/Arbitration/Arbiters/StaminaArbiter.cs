@@ -10,7 +10,7 @@ namespace BBBNexus
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
 
-        public StaminaArbiter(PlayerController player)
+        public StaminaArbiter(BBBCharacterController player)
         {
             _data = player.RuntimeData;
             _config = player.Config;

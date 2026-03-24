@@ -10,7 +10,7 @@ namespace BBBNexus
     public class PlayerCameraManager : MonoBehaviour
     {
         [Header("监听对象")]
-        [SerializeField] private PlayerController _player;
+        [SerializeField] private BBBCharacterController _player;
 
 #if BBBNEXUS_HAS_CINEMACHINE
         [Header("虚拟相机")]

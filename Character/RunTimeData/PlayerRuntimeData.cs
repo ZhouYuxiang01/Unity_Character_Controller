@@ -23,7 +23,7 @@ namespace BBBNexus
         public ArbitrationFlags Arbitration;
         public ActionArbitrationContext ActionArbitration;
 
-        public PlayerRuntimeData(PlayerController player)
+        public PlayerRuntimeData(BBBCharacterController player)
         {
             CurrentHealth = player.Config.Core.MaxHealth;
             CameraTransform = player.PlayerCamera;

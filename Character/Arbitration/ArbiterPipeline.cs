@@ -7,7 +7,7 @@ namespace BBBNexus
         public ActionArbiter Action { get; private set; }
         public StaminaArbiter Stamina { get; private set; }
 
-        public ArbiterPipeline(PlayerController player)
+        public ArbiterPipeline(BBBCharacterController player)
         {
             LOD = new LODArbiter(player);
             Health = new HealthArbiter(player);

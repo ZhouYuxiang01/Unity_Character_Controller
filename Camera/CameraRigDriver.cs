@@ -9,7 +9,7 @@ namespace BBBNexus
     public class CameraRigDriver : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private PlayerController _player;
+        [SerializeField] private BBBCharacterController _player;
 
         [Header("Follow")]
         [Tooltip("跟随的目标 为空时默认使用 Player.transform")]

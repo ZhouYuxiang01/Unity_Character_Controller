@@ -11,7 +11,7 @@ namespace BBBNexus
         private bool _canCheckLand;
         private float _jumpForce;
 
-        public PlayerDoubleJumpState(PlayerController player) : base(player) { }
+        public PlayerDoubleJumpState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 选择二段跳动画 施加跳跃力量 标记已使用二段跳
         public override void Enter()

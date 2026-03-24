@@ -12,7 +12,7 @@ namespace BBBNexus
     {
         private const int FacialLayer = 2;
 
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerSO _config;
         private readonly PlayerRuntimeData _data;
 
@@ -23,7 +23,7 @@ namespace BBBNexus
         private float _fallbackReturnTime;
         private bool _initialized;
 
-        public FacialController(PlayerController player)
+        public FacialController(BBBCharacterController player)
         {
             _player = player;
             _config = player.Config;

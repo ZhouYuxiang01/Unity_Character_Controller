@@ -4,7 +4,7 @@ namespace BBBNexus
     // 在瞄准模式下保持站立 对应FreeLook的IdleState 
     public class PlayerAimIdleState : PlayerBaseState
     {
-        public PlayerAimIdleState(PlayerController player) : base(player) { }
+        public PlayerAimIdleState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 播放空闲动画 使用较长的淡入时间确保平滑过渡
         public override void Enter()

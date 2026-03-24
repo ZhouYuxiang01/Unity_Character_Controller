@@ -13,7 +13,7 @@ namespace BBBNexus
         private float _stateDuration;
         private bool _endTimeTriggered;
 
-        public PlayerDodgeState(PlayerController player) : base(player) { }
+        public PlayerDodgeState(BBBCharacterController player) : base(player) { }
 
         // 闪避状态不可被通用强制打断
         protected override bool CheckInterrupts() => false;

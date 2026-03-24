@@ -4,10 +4,10 @@ namespace BBBNexus
     // 职责 遍历上半身专属的拦截器 根据优先级决定是否切换上半身状态
     public class UpperBodyInterruptProcessor
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly UpperBodyController _upperBody;
 
-        public UpperBodyInterruptProcessor(PlayerController player, UpperBodyController upperBody)
+        public UpperBodyInterruptProcessor(BBBCharacterController player, UpperBodyController upperBody)
         {
             _player = player;
             _upperBody = upperBody;

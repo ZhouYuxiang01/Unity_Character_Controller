@@ -7,7 +7,7 @@ namespace BBBNexus
     /// </summary>
     public class HealthArbiter
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerRuntimeData _data;
 
         // 环形缓冲区 (最多同时受击 16 次)
@@ -15,7 +15,7 @@ namespace BBBNexus
         private int _head = 0;
         private int _tail = 0;
 
-        public HealthArbiter(PlayerController player)
+        public HealthArbiter(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;

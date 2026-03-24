@@ -11,7 +11,7 @@ namespace BBBNexus
 
         private const float LocomotionChangeFadeTime = 0.3f;
 
-        public PlayerMoveLoopState(PlayerController player) : base(player) { }
+        public PlayerMoveLoopState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 根据运动状态和脚相位选择循环动画
         public override void Enter()
@@ -32,7 +32,7 @@ namespace BBBNexus
                 // 优先通过 Animator 获取左右脚骨骼世界位置，与角色朝向做点乘比较
                 try
                 {
-                    var animator = player.animator;
+                    var animator = player.Animator;
                     if (animator != null)
                     {
                         var left = player.LeftFootBone;

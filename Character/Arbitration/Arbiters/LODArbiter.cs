@@ -8,14 +8,14 @@ namespace BBBNexus
     /// </summary>
     public class LODArbiter
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
 
         private float _timeSinceLastArbitration;
         private CharacterLOD _lastEnforcedLOD = CharacterLOD.High;
 
-        public LODArbiter(PlayerController player)
+        public LODArbiter(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;
@@ -67,7 +67,7 @@ namespace BBBNexus
         // 强制执行仲裁结果
         private void EnforceArbitration(CharacterLOD lod)
         {
-            if (_player.animator == null) return;
+            if (_player.Animator == null) return;
 
             // 更新运行时仲裁标志，其他系统根据这些标志做只读判断
             // 原实现中：CurrentLOD > High 时会对一些系统进行降级处理
@@ -83,20 +83,20 @@ namespace BBBNexus
             switch (lod)
             {
                 case CharacterLOD.High:
-                    _player.animator.enabled = true;
-                    _player.animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                    _player.Animator.enabled = true;
+                    _player.Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                     break;
 
                 case CharacterLOD.Medium:
                     // 禁用 Animator 的更新以节省 CPU
                     // 保留当前动画姿态，不进行任何混合或参数计算
-                    _player.animator.enabled = false;
+                    _player.Animator.enabled = false;
                     break;
 
                 case CharacterLOD.Low:
                     // 最严格的降级：彻底关闭 Animator
-                    _player.animator.enabled = false;
-                    _player.animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                    _player.Animator.enabled = false;
+                    _player.Animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
                     break;
             }
         }

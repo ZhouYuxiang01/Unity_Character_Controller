@@ -33,7 +33,7 @@ namespace BBBNexus
     {
         // 注：在最新版本 主要优化了Unity的底层开销(eulerAngles/velocity/materialized quaternion) 并保证每帧重力只积分一次
         #region Dependencies
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly CharacterController _cc;
         private readonly PlayerRuntimeData _data;
         private readonly PlayerSO _config;
@@ -107,7 +107,7 @@ namespace BBBNexus
 
         #endregion
 
-        public MotionDriver(PlayerController player)
+        public MotionDriver(BBBCharacterController player)
         {
             _player = player;
             _cc = player.CharController;

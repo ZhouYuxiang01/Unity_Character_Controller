@@ -8,7 +8,7 @@ namespace BBBNexus
     [Serializable]
     public class PlayerIdleState : PlayerBaseState
     {
-        public PlayerIdleState(PlayerController player) : base(player) { }
+        public PlayerIdleState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 播放空闲动画 设置平滑淡入时长避免动画跳变
         public override void Enter()

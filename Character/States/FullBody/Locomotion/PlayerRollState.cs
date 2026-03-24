@@ -13,7 +13,7 @@ namespace BBBNexus
         private float _stateDuration;
         private bool _endTimeTriggered;
 
-        public PlayerRollState(PlayerController player) : base(player) { }
+        public PlayerRollState(BBBCharacterController player) : base(player) { }
 
         // 翻滚状态不可被通用强制打断
         protected override bool CheckInterrupts() => false;

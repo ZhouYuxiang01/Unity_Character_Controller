@@ -8,10 +8,10 @@ namespace BBBNexus
     /// </summary>
     public class ActionArbiter
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         private readonly PlayerRuntimeData _data;
 
-        public ActionArbiter(PlayerController player)
+        public ActionArbiter(BBBCharacterController player)
         {
             _player = player;
             _data = player.RuntimeData;

@@ -10,12 +10,12 @@ namespace BBBNexus
     [Serializable]
     public abstract class PlayerBaseState : BaseState
     {
-        protected PlayerController player;
+        protected BBBCharacterController player;
         protected PlayerRuntimeData data;
         protected PlayerSO config;
         protected IAnimationFacade AnimFacade;
 
-        protected PlayerBaseState(PlayerController player)
+        protected PlayerBaseState(BBBCharacterController player)
         {
             this.player = player;
             this.data = player.RuntimeData;

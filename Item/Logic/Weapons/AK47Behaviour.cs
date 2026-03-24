@@ -16,7 +16,7 @@ namespace BBBNexus
         [Tooltip("枪口瞄准参考点")]
         [SerializeField] private Transform _muzzle;
         // 玩家引用
-        private PlayerController _player;
+        private BBBCharacterController _player;
         // 实例数据
         private ItemInstance _instance;
         // 配置
@@ -48,7 +48,7 @@ namespace BBBNexus
         }
 
         // 装备并设置IK
-        public void OnEquipEnter(PlayerController player)
+        public void OnEquipEnter(BBBCharacterController player)
         {
             _player = player;
             _isEquipping = true;

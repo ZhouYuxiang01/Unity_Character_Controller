@@ -6,42 +6,39 @@ using UnityEngine;
 namespace BBBNexus
 {
     // 通用背包系统 管理物品的存储 堆叠 查询 
-    // 支持自动堆叠 自动分割 单独操作等高级特性 
-    // 内部存储的是实例 不直接存储 SO 确保运行时数据独立 
+    // 支持自动堆叠 自动分割 单独操作等特性 
     public class InventorySystem
     {
-        // 背包槽位数组 每个槽位存储一个物品实例或空 
+        // 背包槽位数组
         private readonly ItemInstance[] _items;
-        // 背包容量 固定值 创建后不可改变 
+        // 背包容量
         private readonly int _capacity;
 
         // 背包发生变化时的事件 UI 或其他系统可订阅以刷新显示 
         public event Action OnInventoryUpdated;
 
-        // GC 避免：GetAllItems 如果每次都 new List/用 LINQ ToList 会产生托管分配与迭代器分配。
-        // 这里提供一个复用缓冲区用于无分配查询。
+        // 注：GetAllItems 如果每次都 new List/用 LINQ ToList 会产生托管分配与迭代器分配
+        // 这里提供一个复用缓冲区用于无分配查询
         private readonly List<ItemInstance> _allItemsCache = new List<ItemInstance>(32);
 
-        // 初始化背包 指定容量 
+        // 初始化背包
         public InventorySystem(int capacity)
         {
             _capacity = capacity;
-            // 创建指定大小的槽位数组 初始全部为空 
+            // 创建指定大小的槽位数组
             _items = new ItemInstance[capacity];
         }
 
         // 尝试添加物品到背包 支持自动堆叠与分割 
-        // 原子操作 如果空间不足则整个操作都不执行 不会产生部分添加的情况 
         public bool TryAdd(ItemInstance instance)
         {
-            // 验证输入 物品实例必须有效且数量大于零 
+            // 验证输入
             if (instance == null || instance.CurrentAmount <= 0) return false;
 
             var definition = instance.BaseData;
             int remaining = instance.CurrentAmount;
 
-            // 第一阶段 模拟堆叠 不修改数据结构 只计算能否通过堆叠容纳 
-            // 这用于判断是否需要额外的空槽位 
+            // 模拟堆叠 用于判断是否需要额外的空槽位 
             if (definition.MaxStack > 1)
             {
                 // 遍历所有槽位 寻找相同定义的物品进行堆叠 
@@ -85,7 +82,7 @@ namespace BBBNexus
                 return true;
             }
 
-            // 第二阶段 计算空槽数量 判断是否有足够槽位来放下剩余数量 
+            // 计算空槽数量 判断是否有足够槽位来放下剩余数量 
             int emptyCount = 0;
             for (int i = 0; i < _capacity; i++)
             {
@@ -113,7 +110,7 @@ namespace BBBNexus
                 return false;
             }
 
-            // 第三阶段 提交 先堆叠到已有槽 再把剩余拆分到空槽 
+            // 提交 先堆叠到已有槽 再把剩余拆分到空槽 
             remaining = instance.CurrentAmount;
 
             // 堆叠提交 
@@ -258,8 +255,8 @@ namespace BBBNexus
         }
 
         /// <summary>
-        /// 获取所有非空槽位的物品列表（无分配版本）。
-        /// 调用方传入一个 List 作为缓冲区，本方法只会 Clear+Add，不会 new。
+        /// 获取所有非空槽位的物品列表
+        /// 调用方传入一个 List 作为缓冲区
         /// </summary>
         public void GetAllItemsNonAlloc(List<ItemInstance> results)
         {
@@ -273,20 +270,16 @@ namespace BBBNexus
         }
 
         /// <summary>
-        /// 获取所有非空槽位的物品列表（低 GC 版本，返回内部复用缓存）。
-        /// 注意：返回的是内部缓存，外部请只读使用，不要保存引用用于长期持有。
+        /// 获取所有非空槽位的物品列表
+        /// 注：返回的是内部缓存 外部请只读使用 不要保存引用用于长期持有
         /// </summary>
         public IReadOnlyList<ItemInstance> GetAllItems()
         {
-            // GC 风险说明：旧实现 `_items.Where(...).ToList()` 会：
-            // 1) 分配 LINQ 迭代器对象
-            // 2) predicate 如果捕获外部变量会分配闭包
-            // 3) ToList() 分配新 List 以及可能的内部数组扩容
-            // 所以这里改为复用 _allItemsCache。
-#if UNITY_EDITOR
-            // 仅编辑器提示：如果你在 Profiler 里看到 Inventory.GetAllItems 产生 GC，通常就是 ToList/LINQ 导致。
-            // Debug.Log("[GC-RISK FIXED] InventorySystem.GetAllItems: replaced LINQ+ToList with cached list to avoid GC.");
-#endif
+            // 注：旧实现_items.Where(...).ToList()会
+            // 分配 LINQ 迭代器对象
+            // predicate 如果捕获外部变量会分配闭包
+            // ToList() 分配新 List 以及可能的内部数组扩容
+            // 所以这里改为复用 _allItemsCache
             _allItemsCache.Clear();
             for (int i = 0; i < _capacity; i++)
             {

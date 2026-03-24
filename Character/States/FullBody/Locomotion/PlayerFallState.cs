@@ -6,7 +6,7 @@ namespace BBBNexus
     // 负责播放下落动画 持续应用重力 检测落地时机切换到LandState 
     public class PlayerFallState : PlayerBaseState
     {
-        public PlayerFallState(PlayerController player) : base(player) { }
+        public PlayerFallState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 播放下落动画
         public override void Enter()

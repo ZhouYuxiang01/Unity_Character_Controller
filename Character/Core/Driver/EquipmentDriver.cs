@@ -5,7 +5,7 @@ namespace BBBNexus
     // 装备驱动器 负责生成模型注入数据驱动逻辑
     public class EquipmentDriver
     {
-        private readonly PlayerController _player;
+        private readonly BBBCharacterController _player;
         // 当前物品配置
         public EquippableItemSO CurrentItemData { get; private set; }
         // 当前物品实例
@@ -15,7 +15,7 @@ namespace BBBNexus
         // 当前模型实例
         private GameObject _currentWeaponInstance;
 
-        public EquipmentDriver(PlayerController player)
+        public EquipmentDriver(BBBCharacterController player)
         {
             _player = player;
         }

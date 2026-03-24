@@ -13,7 +13,7 @@ namespace BBBNexus
         private const float SectorAngle = 45f;
         private const float HalfSectorAngle = SectorAngle / 2f;
 
-        public PlayerMoveStartState(PlayerController player) : base(player) { }
+        public PlayerMoveStartState(BBBCharacterController player) : base(player) { }
 
         // 进入状态 选择对应方向的起步动画并注册结束回调
         public override void Enter()
