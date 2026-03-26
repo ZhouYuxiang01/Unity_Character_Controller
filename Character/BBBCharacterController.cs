@@ -36,8 +36,8 @@ namespace BBBNexus
         public PlayerSO Config;
         public Transform PlayerCamera;
 
-        [Header("--- 表现与挂点 ---")]
-        public Transform WeaponContainer;
+        [Tooltip("运行时自动在 RightHand 下创建的武器挂点")]
+        public Transform WeaponContainer { get; private set; }
         public Transform LeftHandBone { get; private set; }
         public Transform RightHandBone { get; private set; }
         public Transform LeftFootBone { get; private set; }
@@ -104,6 +104,8 @@ namespace BBBNexus
             RightHandBone=Animator.GetBoneTransform(HumanBodyBones.RightHand);
             LeftFootBone=Animator.GetBoneTransform(HumanBodyBones.LeftFoot);
             RightFootBone=Animator.GetBoneTransform(HumanBodyBones.RightFoot);
+
+            EnsureWeaponContainer();
 
             // 统一的面板依赖注入检查 失败直接抛出异常
             try
@@ -338,6 +340,29 @@ namespace BBBNexus
             // 如果要求立即刷新 则直接跑一次仲裁(一般情况下不用 如果有严格同步需求才请求)
             if (flushImmediately)
                 ArbiterPipeline?.Action?.Arbitrate();
+        }
+
+        private const string WeaponContainerName = "WeaponContainer";
+        private void EnsureWeaponContainer()
+        {
+            // 武器容器固定挂在 RightHand 下
+            // 如果不是 Humanoid / 取不到 RightHand，则退化挂在角色 Root (这是有问题的，装备武器一眼能看出来，就不抛出异常了)
+            Transform parent = RightHandBone != null ? RightHandBone : transform;
+
+            // 防止重复创建（对象池复用/重复 Awake 安全）
+            var existing = parent.Find(WeaponContainerName);
+            if (existing != null)
+            {
+                WeaponContainer = existing;
+                return;
+            }
+
+            var go = new GameObject(WeaponContainerName);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            WeaponContainer = go.transform;
         }
 
         private void InitializeCamera()
