@@ -35,7 +35,7 @@ namespace BBBNexus
         [Tooltip("瞄准左右(Y)动画参数平滑时间")]
         public float AimYAnimBlendSmoothTime = 0.2f;
         
-        [Tooltip("瞄准目标IK追踪平滑时间")]
+        [Tooltip("瞄准目标IK追踪平滑时间(重要！这个决定了角色拉枪到准星的速度)")]
         public float AimIkChaseSmoothTime = 0.1f;
 
         [Header("动画资源")]

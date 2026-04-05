@@ -7,11 +7,11 @@ using UnityEditor;
 namespace BBBNexus
 {
     /// <summary>
-    /// Detects optional 3rd-party dependencies (any import method: UPM/Assets/Plugins/precompiled dll)
-    /// by checking for well-known types and toggles scripting define symbols.
+    /// 检测可选的第三方依赖项（任何导入方式：UPM/Assets/Plugins/预编译dll）
+    /// 通过检查已知类型并切换脚本定义符号。
     ///
-    /// This lets optional feature assemblies use asmdef defineConstraints to be excluded from compilation
-    /// when the dependency is not present.
+    /// 这让可选功能程序集可以使用asmdef defineConstraints来排除编译
+    /// 当依赖项不存在时。
     /// </summary>
     [InitializeOnLoad]
     internal static class BBBNexusDependencyDefines
@@ -24,19 +24,19 @@ namespace BBBNexus
         {
             UpdateDefines();
 
-            // Re-run when Unity recompiles scripts.
+            // 当Unity重新编译脚本时重新运行
             UnityEditor.Compilation.CompilationPipeline.compilationFinished += _ => UpdateDefines();
         }
 
         private static void UpdateDefines()
         {
-            // NOTE: We intentionally use type presence. This works regardless of import method (UPM/Assets/Plugins/dll).
+            // 注意：故意使用类型检测。无论导入方式如何都有效（UPM/Assets/Plugins/dll）
             bool hasUar = HasType("UnityEngine.Animations.Rigging.RigBuilder", "UnityEngine.Animations.Rigging");
 
-            // FinalIK is imported as source scripts under Plugins and ends up in Assembly-CSharp-firstpass.
-            // When BBBNexus isn't yet in its own asmdef, a separate optional asmdef can't reliably reference
-            // both Assembly-CSharp and Assembly-CSharp-firstpass in all IDE/build pipelines.
-            // So we DON'T auto-enable this symbol; keep FinalIK adapter code stubbed unless the user manually wires assemblies.
+            // FinalIK作为Plugins下的源脚本导入，最终在Assembly-CSharp-firstpass中。
+            // 当BBBNexus还没有自己的asmdef时，单独的可选asmdef无法可靠地同时引用
+            // Assembly-CSharp和Assembly-CSharp-firstpass在所有IDE/编译管道中。
+            // 所以不自动启用此符号；除非用户手动连接程序集，否则保持FinalIK适配器代码为存根。
             bool hasFinalIk = HasType("RootMotion.FinalIK.AimIK", "Assembly-CSharp-firstpass") || HasType("RootMotion.FinalIK.AimIK", "Assembly-CSharp");
 
             bool hasCinemachine = HasType("Cinemachine.CinemachineBrain", "Cinemachine");
@@ -49,11 +49,11 @@ namespace BBBNexus
 
         private static bool HasType(string fullTypeName, string preferredAssemblyName)
         {
-            // Fast path: specify the assembly name if known.
+            // 快速路径：如果知道程序集名称则指定它
             if (Type.GetType($"{fullTypeName}, {preferredAssemblyName}") != null)
                 return true;
 
-            // Fallback: search loaded assemblies by type name.
+            // 回退：按类型名称搜索已加载的程序集
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try

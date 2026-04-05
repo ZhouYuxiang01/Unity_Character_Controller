@@ -5,17 +5,6 @@ namespace BBBNexus
     /// <summary>
     /// 玩家运行时数据：用于在输入、物理、动画与 IK 之间共享的帧级黑板
     /// 仅承载状态与意图 不包含行为逻辑
-    /// 
-    /// 关键外部类型：
-    /// - OverrideContext: 覆盖上下文，储存强制状态请求
-    /// - ArbitrationFlags: 仲裁标志，控制各系统是否被阻断
-    /// - ActionArbitrationContext: 动作仲裁上下文，管理高优先级动作请求
-    /// - PlayerSfxEventQueue: 音效事件队列，存储帧级音频意图
-    /// - WarpedMotionData: 变形运动数据，根运动曲线与 IK 参数
-    /// - VaultObstacleInfo: 翻越障碍信息，IK 目标与物理参数
-    /// - ItemInstance: 物品实例，动态装备状态
-    /// - AnimPlayOptions: 动画播放选项，动画过渡参数
-    /// - LocomotionState: 下半身运动状态枚举
     /// </summary>
     public class PlayerRuntimeData
     {
