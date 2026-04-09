@@ -319,11 +319,11 @@ namespace BBBNexus
         {
             if (!_booted) return; // pooling safety
 
-            StateMachine.CurrentState?.PhysicsUpdate();
+            StateMachine.CurrentState.PhysicsUpdate();
 
             IkController.Update();
 
-            ArbiterPipeline?.ProcessLateUpdateArbiters();
+            ArbiterPipeline.ProcessLateUpdateArbiters();
 
             RuntimeData.ResetIntetnt();
         }
