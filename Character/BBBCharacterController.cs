@@ -58,7 +58,6 @@ namespace BBBNexus
         public StateMachine StateMachine { get; private set; }
         public GlobalInterruptProcessor InterruptProcessor { get; private set; }
         public PlayerRuntimeData RuntimeData { get; private set; }
-        public InputData InputData { get; private set; }
 
         // 核心管线
         public InputPipeline InputPipeline { get; private set; }
@@ -149,7 +148,6 @@ namespace BBBNexus
 
             // 实例化纯数据容器
             RuntimeData = new PlayerRuntimeData(this);
-            InputData = new InputData();
 
             // 实例化所有系统控制器与驱动器 
             StateMachine = new StateMachine();
